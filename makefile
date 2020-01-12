@@ -18,7 +18,7 @@ DPKG_NAME	::= $(shell ./etc/dpkgname)
 MKSO		::= $(CC) -shared $(LDFLAGS) $(LIBS)
 MSG		::= echo
 SYSINSTALL      ::= /usr/bin/install -c
-MOD_NAME	::= ziptools
+MOD_NAME	::= nngkno
 MOD_RELEASE     ::= $(shell cat etc/release)
 MOD_VERSION	::= ${KNO_MAJOR}.${KNO_MINOR}.${MOD_RELEASE}
 
@@ -26,7 +26,7 @@ GPGID = FE1BC737F9F323D732AA26330620266BE5AFF294
 SUDO  = $(shell which sudo)
 
 default: staticlibs
-	make ziptools.${libsuffix}
+	make nngkno.${libsuffix}
 
 STATICLIBS=installed/lib/libnng.a
 
@@ -42,22 +42,22 @@ nng/cmake-build/build.ninja: nng/.git
 	      -DCMAKE_INSTALL_PREFIX=../../installed \
 	      ..
 
-ziptools.o: ziptools.c makefile ${STATICLIBS}
+nngkno.o: nngkno.c makefile ${STATICLIBS}
 	@$(CC) $(CFLAGS) -o $@ -c $<
-	@$(MSG) CC "(ZIPTOOLS)" $@
-ziptools.so: ziptools.o makefile
-	 $(MKSO) -o $@ ziptools.o -Wl,-soname=$(@F).${MOD_VERSION} \
+	@$(MSG) CC "(NNGKNO)" $@
+nngkno.so: nngkno.o makefile
+	 $(MKSO) -o $@ nngkno.o -Wl,-soname=$(@F).${MOD_VERSION} \
 	          -Wl,--allow-multiple-definition \
 	          -Wl,--whole-archive ${STATICLIBS} -Wl,--no-whole-archive \
 		 $(LDFLAGS) ${STATICLIBS}
-	 @$(MSG) MKSO "(ZIPTOOLS)" $@
+	 @$(MSG) MKSO "(NNGKNO)" $@
 
-ziptools.dylib: ziptools.o
+nngkno.dylib: nngkno.o
 	@$(MACLIBTOOL) -install_name \
 		`basename $(@F) .dylib`.${KNO_MAJOR}.dylib \
 		$(DYLIB_FLAGS) $(NNG_LDFLAGS) \
-		-o $@ ziptools.o 
-	@$(MSG) MACLIBTOOL "(ZIPTOOLS)" $@
+		-o $@ nngkno.o 
+	@$(MSG) MACLIBTOOL "(NNGKNO)" $@
 
 ${STATICLIBS}: nng/cmake-build/build.ninja
 	cd nng/cmake-build; ninja install
@@ -76,43 +76,43 @@ install:
 clean:
 	rm -f *.o *.${libsuffix}
 deepclean deep-clean: clean
-	if test -f nng/Makefile; then cd ziptools; make clean; fi;
+	if test -f nng/Makefile; then cd nngkno; make clean; fi;
 	rm -rf nng/cmake-build installed
 
-debian: ziptools.c makefile \
+debian: nngkno.c makefile \
 	dist/debian/rules dist/debian/control \
 	dist/debian/changelog.base
 	rm -rf debian
 	cp -r dist/debian debian
 
-debian/changelog: debian ziptools.c makefile
-	@cat debian/changelog.base | etc/gitchangelog kno-ziptools > $@.tmp
+debian/changelog: debian nngkno.c makefile
+	@cat debian/changelog.base | etc/gitchangelog kno-nng > $@.tmp
 	@if test ! -f debian/changelog; then \
 	  mv debian/changelog.tmp debian/changelog; \
 	 elif diff debian/changelog debian/changelog.tmp 2>&1 > /dev/null; then \
 	  mv debian/changelog.tmp debian/changelog; \
 	else rm debian/changelog.tmp; fi
 
-dist/debian.built: ziptools.c makefile debian/changelog
+dist/debian.built: nngkno.c makefile debian/changelog
 	dpkg-buildpackage -sa -us -uc -b -rfakeroot && \
 	touch $@
 
 dist/debian.signed: dist/debian.built
-	debsign --re-sign -k${GPGID} ../kno-ziptools_*.changes && \
+	debsign --re-sign -k${GPGID} ../kno-nng_*.changes && \
 	touch $@
 
 dist/debian.updated: dist/debian.signed
-	dupload -c ./debian/dupload.conf --nomail --to bionic ../kno-ziptools_*.changes && touch $@
+	dupload -c ./debian/dupload.conf --nomail --to bionic ../kno-nng_*.changes && touch $@
 
 deb debs dpkg dpkgs: dist/debian.signed
 
 update-apt: dist/debian.updated
 
 debinstall: dist/debian.signed
-	${SUDO} dpkg -i ../kno-ziptools*.deb
+	${SUDO} dpkg -i ../kno-nng*.deb
 
 debclean:
-	rm -rf ../kno-ziptools_* ../kno-ziptools-* debian
+	rm -rf ../kno-nng_* ../kno-nng-* debian
 
 debfresh:
 	make debclean
