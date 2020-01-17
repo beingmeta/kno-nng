@@ -24,7 +24,7 @@ static int knonng_loglevel;
 #include "kno/bigints.h"
 #include "kno/cprims.h"
 #include "kno/knoregex.h"
-#include "nngkno.h"
+#include "nng.h"
 
 #include <libu8/libu8.h>
 #include <libu8/u8printf.h>

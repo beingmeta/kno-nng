@@ -18,7 +18,7 @@ DPKG_NAME	::= $(shell ./etc/dpkgname)
 MKSO		::= $(CC) -shared $(LDFLAGS) $(LIBS)
 MSG		::= echo
 SYSINSTALL      ::= /usr/bin/install -c
-MOD_NAME	::= nngkno
+MOD_NAME	::= nng
 MOD_RELEASE     ::= $(shell cat etc/release)
 MOD_VERSION	::= ${KNO_MAJOR}.${KNO_MINOR}.${MOD_RELEASE}
 
@@ -26,7 +26,7 @@ GPGID = FE1BC737F9F323D732AA26330620266BE5AFF294
 SUDO  = $(shell which sudo)
 
 default: staticlibs
-	make nngkno.${libsuffix}
+	make nng.${libsuffix}
 
 STATICLIBS=installed/lib/libnng.a
 
@@ -42,22 +42,22 @@ nng/cmake-build/build.ninja: nng/.git
 	      -DCMAKE_INSTALL_PREFIX=../../installed \
 	      ..
 
-nngkno.o: nngkno.c makefile ${STATICLIBS}
+nng.o: nng.c makefile ${STATICLIBS}
 	@$(CC) $(CFLAGS) -o $@ -c $<
-	@$(MSG) CC "(NNGKNO)" $@
-nngkno.so: nngkno.o makefile
-	 $(MKSO) -o $@ nngkno.o -Wl,-soname=$(@F).${MOD_VERSION} \
+	@$(MSG) CC "(NNG)" $@
+nng.so: nng.o makefile
+	 $(MKSO) -o $@ nng.o -Wl,-soname=$(@F).${MOD_VERSION} \
 	          -Wl,--allow-multiple-definition \
 	          -Wl,--whole-archive ${STATICLIBS} -Wl,--no-whole-archive \
 		 $(LDFLAGS) ${STATICLIBS}
-	 @$(MSG) MKSO "(NNGKNO)" $@
+	 @$(MSG) MKSO "(NNG)" $@
 
-nngkno.dylib: nngkno.o
+nng.dylib: nng.o
 	@$(MACLIBTOOL) -install_name \
 		`basename $(@F) .dylib`.${KNO_MAJOR}.dylib \
 		$(DYLIB_FLAGS) $(NNG_LDFLAGS) \
-		-o $@ nngkno.o 
-	@$(MSG) MACLIBTOOL "(NNGKNO)" $@
+		-o $@ nng.o 
+	@$(MSG) MACLIBTOOL "(NNG)" $@
 
 ${STATICLIBS}: nng/cmake-build/build.ninja
 	cd nng/cmake-build; ninja install
@@ -79,13 +79,13 @@ deepclean deep-clean: clean
 	if test -f nng/Makefile; then cd nngkno; make clean; fi;
 	rm -rf nng/cmake-build installed
 
-debian: nngkno.c makefile \
+debian: nng.c makefile \
 	dist/debian/rules dist/debian/control \
 	dist/debian/changelog.base
 	rm -rf debian
 	cp -r dist/debian debian
 
-debian/changelog: debian nngkno.c makefile
+debian/changelog: debian nng.c nng.h makefile
 	@cat debian/changelog.base | etc/gitchangelog kno-nng > $@.tmp
 	@if test ! -f debian/changelog; then \
 	  mv debian/changelog.tmp debian/changelog; \
@@ -93,7 +93,7 @@ debian/changelog: debian nngkno.c makefile
 	  mv debian/changelog.tmp debian/changelog; \
 	else rm debian/changelog.tmp; fi
 
-dist/debian.built: nngkno.c makefile debian/changelog
+dist/debian.built: nng.c makefile debian/changelog
 	dpkg-buildpackage -sa -us -uc -b -rfakeroot && \
 	touch $@
 
