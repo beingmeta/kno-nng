@@ -78,11 +78,11 @@ static lispval get_typesym(kno_nng_type type)
 
 static kno_lisp_type kno_nngobj_type;
 
-struct KNO_NNG *kno_nng_create(kno_nng_type type,lispval typesym)
+struct KNO_NNG *kno_nng_create(kno_nng_type type)
 {
   struct KNO_NNG *fresh = u8_alloc(struct KNO_NNG);
   KNO_INIT_FRESH_CONS(fresh,kno_nngobj_type);
-  fresh->typetag = typesym;
+  fresh->typetag = get_typesym(type);
   fresh->typeinfo = NULL;
   fresh->nng_type = type;
   return fresh;
@@ -98,12 +98,54 @@ static lispval pub_open()
   return LISPVAL(ref);
 }
 
-static lispval close_prim(lispval ptr)
+static lispval nng_kno_err(u8_context cxt,lispval obj)
 {
-  struct KNO_NNG *ref = (kno_nng) ptr;
-  
+  return kno_err("NNG_Error",cxt,NULL,obj);
 }
 
+#define CLOSE_CASE(typename) \
+  case kno_nng_ ## typename ## _type: \
+  if (nng_ ## typename ## _close(ref->nng_ptr.nng_ ## typename)) break; \
+  return KNO_TRUE
+
+
+KNO_DEFPRIM1("nng/close",nng_close_prim,KNO_MIN_ARGS(1),
+	     "Closes an NNG object",
+	     kno_nng_type,KNO_VOID)
+static lispval ngg_close_prim(lispval ptr)
+{
+  struct KNO_NNG *ref = (kno_nng) ptr;
+  switch (ref->nng_type) {
+  case kno_nng_socket_type:
+    if (nng_close(ref->nng_ptr.nng_socket)) break;
+    return KNO_TRUE;
+    CLOSE_CASE(dialer);
+    CLOSE_CASE(listener);
+    CLOSE_CASE(ctx);
+    CLOSE_CASE(pipe);
+    CLOSE_CASE(stream);
+    CLOSE_CASE(stream_dialer);
+    CLOSE_CASE(stream_listener);
+  default:
+    return kno_err("NotSupported","ngg_close_prim",NULL,ptr);
+  }
+  return nng_err("close",ptr);
+}
+
+KNO_DEFPRIM1("nng/dialer",nng_dialer_prim,KNO_MIN_ARGS(1),
+	     "Opens an NNG dialer",
+	     kno_string_type_type,KNO_VOID)
+static lispval nng_dialer_prim(lispval spec)
+{
+  struct KNO_NNG *dialer = kno_nng_create(kno_nng_dialer_type);
+  nng_socket sock = 3;
+  int rv = nng_dialer_create(&(dialer->nng_ptr.nng_dialer),sock,
+			     KNO_CSTRING(spec));
+  if (rv) {
+    u8_free(dialer);
+    return nng_err("nng/dialer",VOID);}
+  return LISPVAL(dialer);
+}
 
 /* Initialization */
 
@@ -125,6 +167,8 @@ KNO_EXPORT int kno_init_knonng()
 
 static void link_local_cprims()
 {
+  KNO_LINK_PRIM("nng/close",nng_close_prim,1,nng_module);
+  KNO_LINK_PRIM("nng/listener",nng_listener_prim,1,nng_module);
 #if 0
   KNO_LINK_PRIM("mongodb/dbinfo",mongodb_getinfo,2,mongodb_module);
   KNO_LINK_PRIM("mongodb/cursor?",mongodb_cursorp,1,mongodb_module);
