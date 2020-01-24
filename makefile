@@ -36,7 +36,8 @@ nng/.git:
 nng/cmake-build/build.ninja: nng/.git
 	if test ! -d nng/cmake-build; then mkdir nng/cmake-build; fi && \
 	cd nng/cmake-build && \
-	cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF \
+	cmake -G Ninja \
+	      -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF \
 	      -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
 	      -DBUILD_SHARED_LIBS=off \
 	      -DCMAKE_INSTALL_PREFIX=../../installed \
@@ -72,6 +73,11 @@ install:
 	@echo === Linked ${CMODULES}/${MOD_NAME}.so.${KNO_MAJOR} to ${MOD_NAME}.so.${MOD_VERSION}
 	@${SUDO} ln -sf ${MOD_NAME}.so.${MOD_VERSION} ${CMODULES}/${MOD_NAME}.so
 	@echo === Linked ${CMODULES}/${MOD_NAME}.so to ${MOD_NAME}.so.${MOD_VERSION}
+
+embed-install:
+	if test -d ../../lib/kno; then \
+	  cp ${MOD_NAME}.${libsuffix} ../../lib/kno; \
+	else echo "Not embeded in KNO build"; fi
 
 clean:
 	rm -f *.o *.${libsuffix}
