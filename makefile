@@ -78,9 +78,10 @@ install:
 	@echo === Linked ${CMODULES}/${MOD_NAME}.so to ${MOD_NAME}.so.${MOD_VERSION}
 
 embed-install update:
-	if test -d ../../lib/kno; then \
-	  cp ${MOD_NAME}.${libsuffix} ../../lib/kno; \
-	else echo "Not embeded in KNO build"; fi
+	@if test -d ../../../lib/kno; then \
+	  cp ${MOD_NAME}.${libsuffix} ../../../lib/kno; \
+	  echo "Updated $(abspath ../../../lib/kno/${MOD_NAME}.${libsuffix})"; \
+	else echo "Not embedded in KNO build"; fi
 
 clean:
 	rm -f *.o *.${libsuffix}
