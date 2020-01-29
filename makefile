@@ -77,7 +77,7 @@ install:
 	@${SUDO} ln -sf ${MOD_NAME}.so.${MOD_VERSION} ${CMODULES}/${MOD_NAME}.so
 	@echo === Linked ${CMODULES}/${MOD_NAME}.so to ${MOD_NAME}.so.${MOD_VERSION}
 
-embed-install:
+embed-install update:
 	if test -d ../../lib/kno; then \
 	  cp ${MOD_NAME}.${libsuffix} ../../lib/kno; \
 	else echo "Not embeded in KNO build"; fi
@@ -87,6 +87,9 @@ clean:
 deepclean deep-clean: clean
 	if test -f nng/Makefile; then cd nngkno; make clean; fi;
 	rm -rf nng/cmake-build installed
+
+fresh: clean
+	make default
 
 debian: nng.c makefile \
 	dist/debian/rules dist/debian/control \
