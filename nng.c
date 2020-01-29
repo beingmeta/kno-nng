@@ -33,6 +33,8 @@ static int knonng_loglevel;
 
 #include <math.h>
 
+static lispval nng_typemap;
+
 static lispval nng_aio_symbol, nng_ctx_symbol, nng_iov_symbol, nng_msg_symbol,
   nng_url_symbol, nng_pipe_symbol, nng_stat_symbol, nng_dialer_symbol,
   nng_socket_symbol, nng_stream_symbol, nng_pipe_ev_symbol, 
@@ -41,39 +43,13 @@ static lispval nng_aio_symbol, nng_ctx_symbol, nng_iov_symbol, nng_msg_symbol,
   nng_sockaddr_ipc_symbol, nng_sockaddr_tcp_symbol, nng_sockaddr_udp_symbol,
   nng_sockaddr_path_symbol, nng_sockaddr_tcp6_symbol, nng_sockaddr_udp6_symbol,
   nng_stream_dialer_symbol, nng_sockaddr_inproc_symbol, 
-  nng_stream_listener_symbol;
+  nng_stream_listener_symbol, nng_pub0_symbol, nng_sub0_symbol,
+  nng_req0_symbol, nng_rep0_symbol;
 
 static lispval get_typesym(kno_nng_type type)
 {
-  switch (type) {
-  case kno_nng_aio_type: return KNOSYM(nng_aio);
-  case kno_nng_ctx_type: return KNOSYM(nng_ctx);
-  case kno_nng_iov_type: return KNOSYM(nng_iov);
-  case kno_nng_msg_type: return KNOSYM(nng_msg);
-  case kno_nng_url_type: return KNOSYM(nng_url);
-  case kno_nng_pipe_type: return KNOSYM(nng_pipe);
-  case kno_nng_stat_type: return KNOSYM(nng_stat);
-  case kno_nng_dialer_type: return KNOSYM(nng_dialer);
-  case kno_nng_socket_type: return KNOSYM(nng_socket);
-  case kno_nng_stream_type: return KNOSYM(nng_stream);
-  case kno_nng_pipe_ev_type: return KNOSYM(nng_pipe_ev);
-  case kno_nng_duration_type: return KNOSYM(nng_duration);
-  case kno_nng_listener_type: return KNOSYM(nng_listener);
-  case kno_nng_sockaddr_type: return KNOSYM(nng_sockaddr);
-  case kno_nng_sockaddr_in_type: return KNOSYM(nng_sockaddr_in);
-  case kno_nng_sockaddr_zt_type: return KNOSYM(nng_sockaddr_zt);
-  case kno_nng_sockaddr_in6_type: return KNOSYM(nng_sockaddr_in6);
-  case kno_nng_sockaddr_ipc_type: return KNOSYM(nng_sockaddr_ipc);
-  case kno_nng_sockaddr_tcp_type: return KNOSYM(nng_sockaddr_tcp);
-  case kno_nng_sockaddr_udp_type: return KNOSYM(nng_sockaddr_udp);
-  case kno_nng_sockaddr_path_type: return KNOSYM(nng_sockaddr_path);
-  case kno_nng_sockaddr_tcp6_type: return KNOSYM(nng_sockaddr_tcp6);
-  case kno_nng_sockaddr_udp6_type: return KNOSYM(nng_sockaddr_udp6);
-  case kno_nng_stream_dialer_type: return KNOSYM(nng_stream_dialer);
-  case kno_nng_sockaddr_inproc_type: return KNOSYM(nng_sockaddr_inproc);
-  case kno_nng_stream_listener_type: return KNOSYM(nng_stream_listener);
-  default: return KNO_FALSE;
-  }
+  lispval key = KNO_INT(((int)type));
+  return kno_hashtable_get((kno_hashtable)nng_typemap,key,KNO_FALSE);
 }
 
 static kno_lisp_type kno_nngobj_type;
@@ -149,20 +125,101 @@ static lispval nng_dialer_prim(lispval spec)
 
 /* Initialization */
 
-KNO_EXPORT int kno_init_knonng(void) KNO_LIBINIT_FN;
-static long long int knonng_initialized = 0;
+KNO_EXPORT int kno_init_nng(void) KNO_LIBINIT_FN;
+static long long int nng_initialized = 0;
 
 #define DEFAULT_FLAGS (KNO_SHORT2LISP(KNO_MONGODB_DEFAULTS))
 
-static lispval knonng_module;
+static lispval nng_module;
 
-KNO_EXPORT int kno_init_knonng()
+KNO_EXPORT int kno_init_nng()
 {
-  if (knonng_initialized) return 0;
+  if (nng_initialized) return 0;
   knonng_initialized = u8_millitime();
 
-  knonng_module = kno_new_cmodule("knonng",0,kno_init_knonng);
+  init_nng_typemap();
+
+  nng_module = kno_new_cmodule("nng",0,kno_init_nng);
   return 1;
+}
+
+static void link_typecode(kno_nng_type t,u8_string s)
+{
+  lispval sym = kno_getsym(s), code = KNO_INT(((int)t));
+  kno_store(nng_typemap,sym,code);
+  kno_store(nng_typemap,code,sym);
+}
+
+static void init_nng_typemap()
+{
+  nng_typemap = kno_make_hashtable(NULL,512);
+
+  link_typecode(kno_nng_socket_type,"socket");
+  link_typecode(kno_nng_pub0_type,"pub0");
+  link_typecode(kno_nng_sub0_type,"sub0");
+  link_typecode(kno_nng_req0_type,"req0");
+  link_typecode(kno_nng_rep0_type,"rep0");
+  link_typecode(kno_nng_pub0_type,"pub");
+  link_typecode(kno_nng_sub0_type,"sub");
+  link_typecode(kno_nng_req0_type,"req");
+  link_typecode(kno_nng_rep0_type,"rep");
+  link_typecode(kno_nng_aio_type,"aio");
+  link_typecode(kno_nng_ctx_type,"ctx");
+  link_typecode(kno_nng_iov_type,"iov");
+  link_typecode(kno_nng_msg_type,"msg");
+  link_typecode(kno_nng_url_type,"url");
+  link_typecode(kno_nng_pipe_type,"pipe");
+  link_typecode(kno_nng_stat_type,"stat");
+  link_typecode(kno_nng_dialer_type,"dialer");
+  link_typecode(kno_nng_stream_type,"stream");
+  link_typecode(kno_nng_pipe_ev_type,"pipe_ev");
+  link_typecode(kno_nng_duration_type,"duration");
+  link_typecode(kno_nng_listener_type,"listener");
+  link_typecode(kno_nng_sockaddr_type,"sockaddr");
+  link_typecode(kno_nng_sockaddr_in_type,"sockaddr_in");
+  link_typecode(kno_nng_sockaddr_zt_type,"sockaddr_zt");
+  link_typecode(kno_nng_sockaddr_in6_type,"sockaddr_in6");
+  link_typecode(kno_nng_sockaddr_ipc_type,"sockaddr_ipc");
+  link_typecode(kno_nng_sockaddr_tcp_type,"sockaddr_tcp");
+  link_typecode(kno_nng_sockaddr_udp_type,"sockaddr_udp");
+  link_typecode(kno_nng_sockaddr_path_type,"sockaddr_path");
+  link_typecode(kno_nng_sockaddr_tcp6_type,"sockaddr_tcp6");
+  link_typecode(kno_nng_sockaddr_udp6_type,"sockaddr_udp6");
+  link_typecode(kno_nng_stream_dialer_type,"stream_dialer");
+  link_typecode(kno_nng_sockaddr_inproc_type,"sockaddr_inproc");
+  link_typecode(kno_nng_stream_listener_type,"stream_listener");
+
+  link_typecode(kno_nng_socket_type,"nng_socket");
+  link_typecode(kno_nng_pub0_type,"nng_pub0");
+  link_typecode(kno_nng_sub0_type,"nng_sub0");
+  link_typecode(kno_nng_req0_type,"nng_req0");
+  link_typecode(kno_nng_rep0_type,"nng_rep0");
+  link_typecode(kno_nng_aio_type,"nng_aio");
+  link_typecode(kno_nng_ctx_type,"nng_ctx");
+  link_typecode(kno_nng_iov_type,"nng_iov");
+  link_typecode(kno_nng_msg_type,"nng_msg");
+  link_typecode(kno_nng_url_type,"nng_url");
+  link_typecode(kno_nng_pipe_type,"nng_pipe");
+  link_typecode(kno_nng_stat_type,"nng_stat");
+  link_typecode(kno_nng_dialer_type,"nng_dialer");
+  link_typecode(kno_nng_stream_type,"nng_stream");
+  link_typecode(kno_nng_pipe_ev_type,"nng_pipe_ev");
+  link_typecode(kno_nng_duration_type,"nng_duration");
+  link_typecode(kno_nng_listener_type,"nng_listener");
+  link_typecode(kno_nng_sockaddr_type,"nng_sockaddr");
+  link_typecode(kno_nng_sockaddr_in_type,"nng_sockaddr_in");
+  link_typecode(kno_nng_sockaddr_zt_type,"nng_sockaddr_zt");
+  link_typecode(kno_nng_sockaddr_in6_type,"nng_sockaddr_in6");
+  link_typecode(kno_nng_sockaddr_ipc_type,"nng_sockaddr_ipc");
+  link_typecode(kno_nng_sockaddr_tcp_type,"nng_sockaddr_tcp");
+  link_typecode(kno_nng_sockaddr_udp_type,"nng_sockaddr_udp");
+  link_typecode(kno_nng_sockaddr_path_type,"nng_sockaddr_path");
+  link_typecode(kno_nng_sockaddr_tcp6_type,"nng_sockaddr_tcp6");
+  link_typecode(kno_nng_sockaddr_udp6_type,"nng_sockaddr_udp6");
+  link_typecode(kno_nng_stream_dialer_type,"nng_stream_dialer");
+  link_typecode(kno_nng_sockaddr_inproc_type,"nng_sockaddr_inproc");
+  link_typecode(kno_nng_stream_listener_type,"nng_stream_listener");
+
 }
 
 static void link_local_cprims()
