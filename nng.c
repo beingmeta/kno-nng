@@ -131,6 +131,7 @@ static lispval nng_close_prim(lispval ptr)
   struct KNO_NNG *ref = (kno_nng) ptr;
   switch (ref->nng_type) {
   case xnng_socket_type: case xnng_req0_type: case xnng_rep0_type:
+  case xnng_pair0_type: case xnng_pair1_type:
   case xnng_pub0_type: case xnng_sub0_type: {
     if (nng_close(ref->nng_ptr.socket)) break;
     return KNO_TRUE;}
@@ -209,7 +210,7 @@ static lispval nng_recv_prim(lispval sock,lispval opts,lispval buf)
 }
 
 KNO_DEFPRIM("nng/pubsock",nng_pubsock_prim,KNO_MIN_ARGS(0),
-	    "Opens an NNG publisth socket")
+	    "Opens an NNG publish socket")
 static lispval nng_pubsock_prim()
 {
   struct KNO_NNG *ref = kno_nng_create(xnng_pub0_type);
@@ -248,22 +249,25 @@ static lispval nng_repsock_prim()
   return LISPVAL(ref);
 }
 
-#if 0
-KNO_DEFPRIM1("nng/dialer",nng_dialer_prim,KNO_MIN_ARGS(1),
-	     "Opens an NNG dialer",
-	     kno_string_type,KNO_VOID)
-static lispval nng_dialer_prim(lispval spec)
+KNO_DEFPRIM("nng/pair0",nng_pair0_prim,KNO_MIN_ARGS(0),
+	    "Opens an NNG pair0 socket")
+static lispval nng_pair0_prim()
 {
-  struct KNO_NNG *dialer = kno_nng_create(xnng_dialer_type);
-  nng_socket sock;
-  int rv = nng_dialer_create(&(dialer->nng_ptr.dialer),sock,
-			     KNO_CSTRING(spec));
-  if (rv) {
-    u8_free(dialer);
-    return nng_kno_err("nng/dialer",VOID);}
-  return LISPVAL(dialer);
+  struct KNO_NNG *ref = kno_nng_create(xnng_pair0_type);
+  int rv = nng_pair0_open(&(ref->nng_ptr.socket));
+  if (rv) return KNO_ERROR_VALUE;
+  return LISPVAL(ref);
 }
-#endif
+
+KNO_DEFPRIM("nng/pair1",nng_pair1_prim,KNO_MIN_ARGS(0),
+	    "Opens an NNG pair1 socket")
+static lispval nng_pair1_prim()
+{
+  struct KNO_NNG *ref = kno_nng_create(xnng_pair1_type);
+  int rv = nng_pair1_open(&(ref->nng_ptr.socket));
+  if (rv) return KNO_ERROR_VALUE;
+  return LISPVAL(ref);
+}
 
 /* Initialization */
 
@@ -378,6 +382,8 @@ static void link_local_cprims()
   KNO_LINK_PRIM("nng/subsock",nng_subsock_prim,0,nng_module);
   KNO_LINK_PRIM("nng/reqsock",nng_reqsock_prim,0,nng_module);
   KNO_LINK_PRIM("nng/repsock",nng_repsock_prim,0,nng_module);
+  KNO_LINK_PRIM("nng/pair0",nng_pair0_prim,0,nng_module);
+  KNO_LINK_PRIM("nng/pair1",nng_pair1_prim,0,nng_module);
   KNO_LINK_PRIM("nng/listen",nng_listen_prim,3,nng_module);
   KNO_LINK_PRIM("nng/dial",nng_dial_prim,3,nng_module);
   KNO_LINK_PRIM("nng/send",nng_send_prim,3,nng_module);

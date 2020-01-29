@@ -3,6 +3,8 @@
 #include "nng/protocol/pubsub0/sub.h"
 #include "nng/protocol/reqrep0/req.h"
 #include "nng/protocol/reqrep0/rep.h"
+#include "nng/protocol/pair0/pair.h"
+#include "nng/protocol/pair1/pair.h"
 
 typedef enum XNNG_TYPE 
   { 
@@ -11,6 +13,8 @@ typedef enum XNNG_TYPE
    xnng_rep0_type,
    xnng_pub0_type,
    xnng_sub0_type,
+   xnng_pair0_type,
+   xnng_pair1_type,
    xnng_aio_type,
    xnng_ctx_type,
    xnng_iov_type,
