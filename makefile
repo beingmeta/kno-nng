@@ -65,7 +65,7 @@ nng.dylib: nng.o
 	@$(MSG) MACLIBTOOL "(NNG)" $@
 
 ${STATICLIBS}:
-	make mongo-c-driver/cmake-build/Makefile
+	make nng/cmake-build/build.ninja
 	cd nng/cmake-build; ninja install
 	if test -d installed/lib; then \
 	  echo > /dev/null; \
