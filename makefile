@@ -1,8 +1,8 @@
 KNOCONFIG       ::= knoconfig
 prefix		::= $(shell ${KNOCONFIG} prefix)
 libsuffix	::= $(shell ${KNOCONFIG} libsuffix)
-KNO_CFLAGS	::= -I. -fPIC $(shell ${KNOCONFIG} cflags)
-KNO_LDFLAGS	::= -fPIC $(shell ${KNOCONFIG} ldflags)
+KNO_CFLAGS	::= -I. -I./installed/include -fPIC $(shell ${KNOCONFIG} cflags)
+KNO_LDFLAGS	::= -fPIC -L./installed/lib $(shell ${KNOCONFIG} ldflags)
 NNG_CFLAGS   ::=
 NNG_LDFLAGS  ::=
 CFLAGS		::= ${CFLAGS} ${KNO_CFLAGS} ${BSON_CFLAGS} ${NNG_CFLAGS}
@@ -22,6 +22,7 @@ SYSINSTALL      ::= /usr/bin/install -c
 MOD_NAME	::= nng
 MOD_RELEASE     ::= $(shell cat etc/release)
 MOD_VERSION	::= ${KNO_MAJOR}.${KNO_MINOR}.${MOD_RELEASE}
+APKREPO         ::= $(shell ${KNOCONFIG} apkrepo)
 
 GPGID = FE1BC737F9F323D732AA26330620266BE5AFF294
 SUDO  = $(shell which sudo)
@@ -45,7 +46,7 @@ nng/cmake-build/build.ninja: nng/.git
 	      ..
 
 nng.o: nng.c makefile ${STATICLIBS}
-	@$(CC) $(CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) -o $@ -c $<
 	@$(MSG) CC "(NNG)" $@
 nng.so: nng.o makefile
 	 @$(MKSO) -o $@ nng.o -Wl,-soname=$(@F).${MOD_VERSION} \
@@ -63,11 +64,22 @@ nng.dylib: nng.o
 	@if test ! -z "${COPY_CMODS}"; then cp $@ ${COPY_CMODS}; fi;
 	@$(MSG) MACLIBTOOL "(NNG)" $@
 
-${STATICLIBS}: nng/cmake-build/build.ninja
+${STATICLIBS}:
+	make mongo-c-driver/cmake-build/Makefile
 	cd nng/cmake-build; ninja install
+	if test -d installed/lib; then \
+	  echo > /dev/null; \
+	elif test -d installed/lib64; then \
+	  ln -sf lib64 installed/lib; \
+	else echo "No install libdir"; \
+	fi
+
 staticlibs: ${STATICLIBS}
 
-install:
+${CMODULES}:
+	@install -d ${CMODULES}
+
+install: ${CMODULES}
 	@${SUDO} ${SYSINSTALL} ${MOD_NAME}.${libsuffix} ${CMODULES}/${MOD_NAME}.so.${MOD_VERSION}
 	@echo === Installed ${CMODULES}/${MOD_NAME}.so.${MOD_VERSION}
 	@${SUDO} ln -sf ${MOD_NAME}.so.${MOD_VERSION} ${CMODULES}/${MOD_NAME}.so.${KNO_MAJOR}.${KNO_MINOR}
@@ -130,3 +142,30 @@ debclean:
 debfresh:
 	make debclean
 	make dist/debian.signed
+
+# Alpine packaging
+
+${APKREPO}/dist/x86_64:
+	@install -d $@
+
+staging/alpine:
+	@install -d $@
+
+staging/alpine/APKBUILD: dist/alpine/APKBUILD staging/alpine
+	cp dist/alpine/APKBUILD staging/alpine
+
+staging/alpine/kno-${MOD_NAME}.tar: staging/alpine
+	git archive --prefix=kno-${MOD_NAME}/ -o staging/alpine/kno-${MOD_NAME}.tar HEAD
+
+dist/alpine.done: staging/alpine/APKBUILD makefile ${STATICLIBS} \
+	staging/alpine/kno-${MOD_NAME}.tar ${APKREPO}/dist/x86_64
+	cd staging/alpine; \
+		abuild -P ${APKREPO} clean cleancache cleanpkg && \
+		abuild checksum && \
+		abuild -P ${APKREPO} && \
+		touch ../../$@
+
+alpine: dist/alpine.done
+
+.PHONY: alpine
+
