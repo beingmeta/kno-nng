@@ -1,8 +1,8 @@
 KNOCONFIG       ::= knoconfig
 prefix		::= $(shell ${KNOCONFIG} prefix)
 libsuffix	::= $(shell ${KNOCONFIG} libsuffix)
-KNO_CFLAGS	::= -I. -fPIC $(shell ${KNOCONFIG} cflags)
-KNO_LDFLAGS	::= -fPIC $(shell ${KNOCONFIG} ldflags)
+KNO_CFLAGS	::= -I. -I./installed/include -fPIC $(shell ${KNOCONFIG} cflags)
+KNO_LDFLAGS	::= -fPIC -L./installed/lib $(shell ${KNOCONFIG} ldflags)
 NNG_CFLAGS   ::=
 NNG_LDFLAGS  ::=
 CFLAGS		::= ${CFLAGS} ${KNO_CFLAGS} ${BSON_CFLAGS} ${NNG_CFLAGS}
@@ -19,9 +19,12 @@ DPKG_NAME	::= $(shell ./etc/dpkgname)
 MKSO		::= $(CC) -shared $(LDFLAGS) $(LIBS)
 MSG		::= echo
 SYSINSTALL      ::= /usr/bin/install -c
-MOD_NAME	::= nng
-MOD_RELEASE     ::= $(shell cat etc/release)
-MOD_VERSION	::= ${KNO_MAJOR}.${KNO_MINOR}.${MOD_RELEASE}
+PKG_NAME	::= nng
+PKG_RELEASE     ::= $(shell cat etc/release)
+PKG_VERSION	::= ${KNO_MAJOR}.${KNO_MINOR}.${PKG_RELEASE}
+APKREPO         ::= $(shell ${KNOCONFIG} apkrepo)
+CODENAME	::= $(shell ${KNOCONFIG} codename)
+RELSTATUS	::= $(shell ${KNOCONFIG} status)
 
 GPGID = FE1BC737F9F323D732AA26330620266BE5AFF294
 SUDO  = $(shell which sudo)
@@ -45,10 +48,10 @@ nng/cmake-build/build.ninja: nng/.git
 	      ..
 
 nng.o: nng.c makefile ${STATICLIBS}
-	@$(CC) $(CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) -o $@ -c $<
 	@$(MSG) CC "(NNG)" $@
 nng.so: nng.o makefile
-	 @$(MKSO) -o $@ nng.o -Wl,-soname=$(@F).${MOD_VERSION} \
+	 @$(MKSO) -o $@ nng.o -Wl,-soname=$(@F).${PKG_VERSION} \
 	          -Wl,--allow-multiple-definition \
 	          -Wl,--whole-archive ${STATICLIBS} -Wl,--no-whole-archive \
 		  $(LDFLAGS) ${STATICLIBS}
@@ -63,24 +66,35 @@ nng.dylib: nng.o
 	@if test ! -z "${COPY_CMODS}"; then cp $@ ${COPY_CMODS}; fi;
 	@$(MSG) MACLIBTOOL "(NNG)" $@
 
-${STATICLIBS}: nng/cmake-build/build.ninja
+${STATICLIBS}:
+	make nng/cmake-build/build.ninja
 	cd nng/cmake-build; ninja install
+	if test -d installed/lib; then \
+	  echo > /dev/null; \
+	elif test -d installed/lib64; then \
+	  ln -sf lib64 installed/lib; \
+	else echo "No install libdir"; \
+	fi
+
 staticlibs: ${STATICLIBS}
 
-install:
-	@${SUDO} ${SYSINSTALL} ${MOD_NAME}.${libsuffix} ${CMODULES}/${MOD_NAME}.so.${MOD_VERSION}
-	@echo === Installed ${CMODULES}/${MOD_NAME}.so.${MOD_VERSION}
-	@${SUDO} ln -sf ${MOD_NAME}.so.${MOD_VERSION} ${CMODULES}/${MOD_NAME}.so.${KNO_MAJOR}.${KNO_MINOR}
-	@echo === Linked ${CMODULES}/${MOD_NAME}.so.${KNO_MAJOR}.${KNO_MINOR} to ${MOD_NAME}.so.${MOD_VERSION}
-	@${SUDO} ln -sf ${MOD_NAME}.so.${MOD_VERSION} ${CMODULES}/${MOD_NAME}.so.${KNO_MAJOR}
-	@echo === Linked ${CMODULES}/${MOD_NAME}.so.${KNO_MAJOR} to ${MOD_NAME}.so.${MOD_VERSION}
-	@${SUDO} ln -sf ${MOD_NAME}.so.${MOD_VERSION} ${CMODULES}/${MOD_NAME}.so
-	@echo === Linked ${CMODULES}/${MOD_NAME}.so to ${MOD_NAME}.so.${MOD_VERSION}
+${CMODULES}:
+	@install -d ${CMODULES}
+
+install: ${CMODULES}
+	@${SUDO} ${SYSINSTALL} ${PKG_NAME}.${libsuffix} ${CMODULES}/${PKG_NAME}.so.${PKG_VERSION}
+	@echo === Installed ${CMODULES}/${PKG_NAME}.so.${PKG_VERSION}
+	@${SUDO} ln -sf ${PKG_NAME}.so.${PKG_VERSION} ${CMODULES}/${PKG_NAME}.so.${KNO_MAJOR}.${KNO_MINOR}
+	@echo === Linked ${CMODULES}/${PKG_NAME}.so.${KNO_MAJOR}.${KNO_MINOR} to ${PKG_NAME}.so.${PKG_VERSION}
+	@${SUDO} ln -sf ${PKG_NAME}.so.${PKG_VERSION} ${CMODULES}/${PKG_NAME}.so.${KNO_MAJOR}
+	@echo === Linked ${CMODULES}/${PKG_NAME}.so.${KNO_MAJOR} to ${PKG_NAME}.so.${PKG_VERSION}
+	@${SUDO} ln -sf ${PKG_NAME}.so.${PKG_VERSION} ${CMODULES}/${PKG_NAME}.so
+	@echo === Linked ${CMODULES}/${PKG_NAME}.so to ${PKG_NAME}.so.${PKG_VERSION}
 
 embed-install update:
 	@if test -d ../../../lib/kno; then \
-	  cp ${MOD_NAME}.${libsuffix} ../../../lib/kno; \
-	  echo "Updated $(abspath ../../../lib/kno/${MOD_NAME}.${libsuffix})"; \
+	  cp ${PKG_NAME}.${libsuffix} ../../../lib/kno; \
+	  echo "Updated $(abspath ../../../lib/kno/${PKG_NAME}.${libsuffix})"; \
 	else echo "Not embedded in KNO build"; fi
 
 clean:
@@ -99,10 +113,11 @@ debian: nng.c makefile \
 	cp -r dist/debian debian
 
 debian/changelog: debian nng.c nng.h makefile
-	@cat debian/changelog.base | etc/gitchangelog kno-nng > $@.tmp
-	@if test ! -f debian/changelog; then \
+	cat debian/changelog.base | \
+		knomod debchangelog kno-${PKG_NAME} ${CODENAME} ${RELSTATUS} > $@.tmp
+	if test ! -f debian/changelog; then \
 	  mv debian/changelog.tmp debian/changelog; \
-	 elif diff debian/changelog debian/changelog.tmp 2>&1 > /dev/null; then \
+	elif diff debian/changelog debian/changelog.tmp 2>&1 > /dev/null; then \
 	  mv debian/changelog.tmp debian/changelog; \
 	else rm debian/changelog.tmp; fi
 
@@ -130,3 +145,30 @@ debclean:
 debfresh:
 	make debclean
 	make dist/debian.signed
+
+# Alpine packaging
+
+${APKREPO}/dist/x86_64:
+	@install -d $@
+
+staging/alpine:
+	@install -d $@
+
+staging/alpine/APKBUILD: dist/alpine/APKBUILD staging/alpine
+	cp dist/alpine/APKBUILD staging/alpine
+
+staging/alpine/kno-${PKG_NAME}.tar: staging/alpine
+	git archive --prefix=kno-${PKG_NAME}/ -o staging/alpine/kno-${PKG_NAME}.tar HEAD
+
+dist/alpine.done: staging/alpine/APKBUILD makefile ${STATICLIBS} \
+	staging/alpine/kno-${PKG_NAME}.tar ${APKREPO}/dist/x86_64
+	cd staging/alpine; \
+		abuild -P ${APKREPO} clean cleancache cleanpkg && \
+		abuild checksum && \
+		abuild -P ${APKREPO} && \
+		touch ../../$@
+
+alpine: dist/alpine.done
+
+.PHONY: alpine
+
