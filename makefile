@@ -1,13 +1,14 @@
 KNOCONFIG         = knoconfig
 KNOBUILD          = knobuild
+
 prefix		::= $(shell ${KNOCONFIG} prefix)
 libsuffix	::= $(shell ${KNOCONFIG} libsuffix)
-KNO_CFLAGS	::= -I. -I./installed/include -fPIC $(shell ${KNOCONFIG} cflags)
-KNO_LDFLAGS	::= -fPIC -L./installed/lib $(shell ${KNOCONFIG} ldflags)
-NNG_CFLAGS   ::=
-NNG_LDFLAGS  ::=
-CFLAGS		::= ${CFLAGS} ${KNO_CFLAGS} ${BSON_CFLAGS} ${NNG_CFLAGS}
-LDFLAGS		::= ${LDFLAGS} ${KNO_LDFLAGS} ${BSON_LDFLAGS} ${NNG_LDFLAGS}
+KNO_CFLAGS	::= -I. -fPIC $(shell ${KNOCONFIG} cflags)
+KNO_LDFLAGS	::= -fPIC $(shell ${KNOCONFIG} ldflags)
+NNG_CFLAGS      ::=  -I./installed/include
+NNG_LDFLAGS     ::=  -L./installed/lib
+INIT_CFLAGS     ::= ${CFLAGS}
+INIT_LDFLAGS    ::= ${LDFLAGS}
 CMODULES	::= $(DESTDIR)$(shell ${KNOCONFIG} cmodules)
 LIBS		::= $(shell ${KNOCONFIG} libs)
 LIB		::= $(shell ${KNOCONFIG} lib)
@@ -17,21 +18,24 @@ KNO_MAJOR	::= $(shell ${KNOCONFIG} major)
 KNO_MINOR	::= $(shell ${KNOCONFIG} minor)
 PKG_RELEASE	::= $(cat ./etc/release)
 DPKG_NAME	::= $(shell ./etc/dpkgname)
-MKSO		::= $(CC) -shared $(LDFLAGS) $(LIBS)
-MSG		::= echo
-SYSINSTALL      ::= /usr/bin/install -c
-PKG_NAME	::= nng
+SUDO            ::= $(shell which sudo)
+
+CFLAGS		  = ${INIT_CFLAGS} ${KNO_CFLAGS} ${BSON_CFLAGS} ${NNG_CFLAGS}
+LDFLAGS		  = ${INIT_LDFLAGS} ${KNO_LDFLAGS} ${BSON_LDFLAGS} ${NNG_LDFLAGS}
+MKSO		  = $(CC) -shared $(LDFLAGS) $(LIBS)
+SYSINSTALL        = /usr/bin/install -c
+MSG		  = echo
+
+PKG_NAME	  = nng
+GPGID             = FE1BC737F9F323D732AA26330620266BE5AFF294
+PKG_VERSION	  = ${KNO_MAJOR}.${KNO_MINOR}.${PKG_RELEASE}
 PKG_RELEASE     ::= $(shell cat etc/release)
-PKG_VERSION	::= ${KNO_MAJOR}.${KNO_MINOR}.${PKG_RELEASE}
 CODENAME	::= $(shell ${KNOCONFIG} codename)
-RELSTATUS	::= $(shell ${KNOCONFIG} status)
+RELSTATUS	::= $(shell ${KNOBUILD} getbuildopt BUILDSTATUS stable)
 DEFAULT_ARCH    ::= $(shell /bin/arch)
 ARCH            ::= $(shell ${KNOBUILD} ARCH ${DEFAULT_ARCH})
 APKREPO         ::= $(shell ${KNOBUILD} getbuildopt APKREPO /srv/repo/kno/apk)
-APK_ARCH_DIR    ::= ${APKREPO}/staging/${ARCH}
-
-GPGID = FE1BC737F9F323D732AA26330620266BE5AFF294
-SUDO  = $(shell which sudo)
+APK_ARCH_DIR      = ${APKREPO}/staging/${ARCH}
 
 default: staticlibs
 	make nng.${libsuffix}
