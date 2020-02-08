@@ -3,12 +3,6 @@ KNOBUILD          = knobuild
 
 prefix		::= $(shell ${KNOCONFIG} prefix)
 libsuffix	::= $(shell ${KNOCONFIG} libsuffix)
-KNO_CFLAGS	::= -I. -fPIC $(shell ${KNOCONFIG} cflags)
-KNO_LDFLAGS	::= -fPIC $(shell ${KNOCONFIG} ldflags)
-NNG_CFLAGS      ::=  -I./installed/include
-NNG_LDFLAGS     ::=  -L./installed/lib
-INIT_CFLAGS     ::= ${CFLAGS}
-INIT_LDFLAGS    ::= ${LDFLAGS}
 CMODULES	::= $(DESTDIR)$(shell ${KNOCONFIG} cmodules)
 LIBS		::= $(shell ${KNOCONFIG} libs)
 LIB		::= $(shell ${KNOCONFIG} lib)
@@ -19,6 +13,13 @@ KNO_MINOR	::= $(shell ${KNOCONFIG} minor)
 PKG_RELEASE	::= $(cat ./etc/release)
 DPKG_NAME	::= $(shell ./etc/dpkgname)
 SUDO            ::= $(shell which sudo)
+
+INIT_CFLAGS     ::= ${CFLAGS}
+INIT_LDFLAGS    ::= ${LDFLAGS}
+KNO_CFLAGS	::= -I. -fPIC $(shell ${KNOCONFIG} cflags)
+KNO_LDFLAGS	::= -fPIC $(shell ${KNOCONFIG} ldflags)
+NNG_CFLAGS      ::= -I./installed/include
+NNG_LDFLAGS     ::= -L./installed/lib
 
 CFLAGS		  = ${INIT_CFLAGS} ${KNO_CFLAGS} ${BSON_CFLAGS} ${NNG_CFLAGS}
 LDFLAGS		  = ${INIT_LDFLAGS} ${KNO_LDFLAGS} ${BSON_LDFLAGS} ${NNG_LDFLAGS}
@@ -31,7 +32,9 @@ GPGID             = FE1BC737F9F323D732AA26330620266BE5AFF294
 PKG_VERSION	  = ${KNO_MAJOR}.${KNO_MINOR}.${PKG_RELEASE}
 PKG_RELEASE     ::= $(shell cat etc/release)
 CODENAME	::= $(shell ${KNOCONFIG} codename)
-RELSTATUS	::= $(shell ${KNOBUILD} getbuildopt BUILDSTATUS stable)
+REL_BRANCH	::= $(shell ${KNOBUILD} getbuildopt REL_BRANCH current)
+REL_STATUS	::= $(shell ${KNOBUILD} getbuildopt REL_STATUS stable)
+REL_PRIORITY	::= $(shell ${KNOBUILD} getbuildopt REL_PRIORITY medium)
 ARCH            ::= $(shell ${KNOBUILD} getbuildopt BUILD_ARCH || uname -m)
 APKREPO         ::= $(shell ${KNOBUILD} getbuildopt APKREPO /srv/repo/kno/apk)
 APK_ARCH_DIR      = ${APKREPO}/staging/${ARCH}
@@ -126,7 +129,9 @@ debian: nng.c makefile \
 
 debian/changelog: debian nng.c nng.h makefile
 	cat debian/changelog.base | \
-		knobuild debchangelog kno-${PKG_NAME} ${CODENAME} ${RELSTATUS} > $@.tmp
+		knobuild debchangelog kno-${PKG_NAME} ${CODENAME} \
+			${REL_BRANCH} ${REL_STATUS} ${REL_PRIORITY} \
+	    > $@.tmp
 	if test ! -f debian/changelog; then \
 	  mv debian/changelog.tmp debian/changelog; \
 	elif diff debian/changelog debian/changelog.tmp 2>&1 > /dev/null; then \
