@@ -121,11 +121,18 @@ gitup gitup-trunk:
 
 # Debian building
 
+DEBFILES=changelog.base compat control copyright dirs docs install
+
 debian: nng.c makefile \
 	dist/debian/rules dist/debian/control \
 	dist/debian/changelog.base
 	rm -rf debian
 	cp -r dist/debian debian
+	cd debian; chmod a-x ${DEBFILES}
+
+debian/.build_setup:
+	sudo apt install ninja-build cmake
+	touch $@
 
 debian/changelog: debian nng.c nng.h makefile
 	cat debian/changelog.base | \
@@ -138,7 +145,7 @@ debian/changelog: debian nng.c nng.h makefile
 	  mv debian/changelog.tmp debian/changelog; \
 	else rm debian/changelog.tmp; fi
 
-dist/debian.built: nng.c makefile debian/changelog
+dist/debian.built: nng.c makefile debian/changelog debian/.build_setup
 	dpkg-buildpackage -sa -us -uc -b -rfakeroot && \
 	touch $@
 
@@ -146,12 +153,7 @@ dist/debian.signed: dist/debian.built
 	debsign --re-sign -k${GPGID} ../kno-nng_*.changes && \
 	touch $@
 
-dist/debian.updated: dist/debian.signed
-	dupload -c ./debian/dupload.conf --nomail --to bionic ../kno-nng_*.changes && touch $@
-
 deb debs dpkg dpkgs: dist/debian.signed
-
-update-apt: dist/debian.updated
 
 debinstall: dist/debian.signed
 	${SUDO} dpkg -i ../kno-nng*.deb
