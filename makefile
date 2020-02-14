@@ -25,6 +25,7 @@ CFLAGS		  = ${INIT_CFLAGS} ${KNO_CFLAGS} ${BSON_CFLAGS} ${NNG_CFLAGS}
 LDFLAGS		  = ${INIT_LDFLAGS} ${KNO_LDFLAGS} ${BSON_LDFLAGS} ${NNG_LDFLAGS}
 MKSO		  = $(CC) -shared $(LDFLAGS) $(LIBS)
 SYSINSTALL        = /usr/bin/install -c
+DIRINSTALL        = /usr/bin/install -d
 MSG		  = echo
 
 PKG_NAME	  = nng
@@ -42,20 +43,20 @@ APK_ARCH_DIR      = ${APKREPO}/staging/${ARCH}
 default: staticlibs
 	make nng.${libsuffix}
 
-STATICLIBS=installed/lib/libnng.a
+STATICLIBS=nng-install/lib/libnng.a
 
 nng/.git:
 	git submodule init
 	git submodule update
-nng/cmake-build/build.ninja: nng/.git
-	if test ! -d nng/cmake-build; then mkdir nng/cmake-build; fi && \
-	cd nng/cmake-build && \
+nng-build nng-install:
+	${DIRINSTALL} nng-build
+nng-build/build.ninja: nng/.git nng-build
+	cd nng-build && \
 	cmake -G Ninja \
-	      -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF \
 	      -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
 	      -DBUILD_SHARED_LIBS=off \
-	      -DCMAKE_INSTALL_PREFIX=../../installed \
-	      ..
+	      -DCMAKE_INSTALL_PREFIX=../nng-install \
+	      ../nng
 
 nng.o: nng.c makefile ${STATICLIBS}
 	$(CC) $(CFLAGS) -o $@ -c $<
@@ -76,13 +77,12 @@ nng.dylib: nng.o
 	@if test ! -z "${COPY_CMODS}"; then cp $@ ${COPY_CMODS}; fi;
 	@$(MSG) MACLIBTOOL "(NNG)" $@
 
-${STATICLIBS}:
-	make nng/cmake-build/build.ninja
-	cd nng/cmake-build; ninja install
-	if test -d installed/lib; then \
+${STATICLIBS}: nng-build/build.ninja nng-install
+	cd nng-build; ninja && ninja install
+	if test -d nng-install/lib; then \
 	  echo > /dev/null; \
-	elif test -d installed/lib64; then \
-	  ln -sf lib64 installed/lib; \
+	elif test -d nng-install/lib64; then \
+	  ln -sf lib64 nng-install/lib; \
 	else echo "No install libdir"; \
 	fi
 
@@ -110,8 +110,7 @@ embed-install update:
 clean:
 	rm -f *.o *.${libsuffix}
 deepclean deep-clean: clean
-	if test -f nng/Makefile; then cd nngkno; make clean; fi;
-	rm -rf nng/cmake-build installed
+	rm -rf nng-build nng-install
 
 fresh: clean
 	make default
