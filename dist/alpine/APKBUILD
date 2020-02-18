@@ -17,16 +17,16 @@ builddir="${srcdir}/kno-nng"
 
 build() {
 #	echo "@build pwd=$(pwd) startdir=${startdir} srcdir=${srcdir} pkgdir=${pkgdir} builddir=${builddir}"
-	cp -r ../../../../installed .
-	make
+	cp -r ../../../../nng-install installed
+	make NNGINSTALL=./installed
 }
 
 check() {
 #	echo "@check pwd=$(pwd) startdir=${startdir} srcdir=${srcdir} pkgdir=${pkgdir} builddir=${builddir}"
-	make
+	make NNGINSTALL=./installed
 }
 
 package() {
 #	echo "@package pwd=$(pwd) startdir=${startdir} srcdir=${srcdir} pkgdir=${pkgdir} builddir=${builddir}"
-	make DESTDIR="$pkgdir" SUDO= install
+	make NNGINSTALL=./installed DESTDIR="$pkgdir" SUDO= install
 }

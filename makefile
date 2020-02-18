@@ -1,5 +1,6 @@
 KNOCONFIG         = knoconfig
 KNOBUILD          = knobuild
+NNGINSTALL        = nng-install
 
 prefix		::= $(shell ${KNOCONFIG} prefix)
 libsuffix	::= $(shell ${KNOCONFIG} libsuffix)
@@ -18,11 +19,11 @@ INIT_CFLAGS     ::= ${CFLAGS}
 INIT_LDFLAGS    ::= ${LDFLAGS}
 KNO_CFLAGS	::= -I. -fPIC $(shell ${KNOCONFIG} cflags)
 KNO_LDFLAGS	::= -fPIC $(shell ${KNOCONFIG} ldflags)
-NNG_CFLAGS      ::= -I./installed/include
-NNG_LDFLAGS     ::= -L./installed/lib
+NNG_CFLAGS      ::= -I${NNGINSTALL}/include
+NNG_LDFLAGS     ::= -L${NNGINSTALL}/lib -lnng
 
-CFLAGS		  = ${INIT_CFLAGS} ${KNO_CFLAGS} ${BSON_CFLAGS} ${NNG_CFLAGS}
-LDFLAGS		  = ${INIT_LDFLAGS} ${KNO_LDFLAGS} ${BSON_LDFLAGS} ${NNG_LDFLAGS}
+CFLAGS		  = ${INIT_CFLAGS} ${KNO_CFLAGS} ${NNG_CFLAGS}
+LDFLAGS		  = ${INIT_LDFLAGS} ${KNO_LDFLAGS} ${NNG_LDFLAGS}
 MKSO		  = $(CC) -shared $(LDFLAGS) $(LIBS)
 SYSINSTALL        = /usr/bin/install -c
 DIRINSTALL        = /usr/bin/install -d
@@ -43,7 +44,7 @@ APK_ARCH_DIR      = ${APKREPO}/staging/${ARCH}
 default: staticlibs
 	make nng.${libsuffix}
 
-STATICLIBS=nng-install/lib/libnng.a
+STATICLIBS=${NNGINSTALL}/lib/libnng.a
 
 nng/.git:
 	git submodule init
@@ -77,7 +78,7 @@ nng.dylib: nng.o
 	@if test ! -z "${COPY_CMODS}"; then cp $@ ${COPY_CMODS}; fi;
 	@$(MSG) MACLIBTOOL "(NNG)" $@
 
-${STATICLIBS}: nng-build/build.ninja nng-install
+nng-install/lib/libnng.a: nng-build/build.ninja nng-install
 	cd nng-build; ninja && ninja install
 	if test -d nng-install/lib; then \
 	  echo > /dev/null; \
