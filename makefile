@@ -50,7 +50,7 @@ nng/.git:
 	git submodule init
 	git submodule update
 nng-build nng-install:
-	${DIRINSTALL} nng-build
+	${DIRINSTALL} $@
 nng-build/build.ninja: nng/.git nng-build
 	cd nng-build && \
 	cmake -G Ninja \
