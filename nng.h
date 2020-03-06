@@ -9,7 +9,6 @@
 typedef enum XNNG_TYPE 
   { 
    xnng_socket_type,
-   xnng_aio_type,
    xnng_handler_type,
    xnng_req0_type,
    xnng_rep0_type,
@@ -45,11 +44,12 @@ typedef enum XNNG_TYPE
   xnng_type;
 
 typedef struct KNO_NNG_HANDLER {
-  lispval  fcn;
-  lispval  state;
-  nng_ctx  ctx;
-  nng_sock sock;
-  nng_aio  aio;} *kno_nng_handler;
+  lispval    fcn;
+  lispval    state;
+  lispval    data;
+  nng_ctx    ctx;
+  nng_socket sock;
+  nng_aio    *aio;} *kno_nng_handler;
 
 typedef union XNNG_PTR {
   nng_aio *aio;
@@ -78,7 +78,7 @@ typedef union XNNG_PTR {
   nng_sockaddr_inproc sockaddr_inproc;
   nng_stream_dialer *stream_dialer;
   nng_stream_listener *stream_listener;
-  struct KNO_NNG_CALLBACK *callback; } xnng_ptr;
+  struct KNO_NNG_HANDLER *handler; } xnng_ptr;
 
 typedef struct KNO_NNG {
   KNO_TAGGED_HEAD;

@@ -107,7 +107,7 @@ static lispval mkerr(int rv,u8_context cxt,lispval obj,u8_string details)
 #define CHECK_NNG_SUBTYPE(x,subtype,caller)				\
   if (!(KNO_TYPEP(x,kno_nng_type))) return kno_err("NotNNG",caller,NULL,x); \
   else if ( (((kno_nng)(x))->nng_type) != (subtype) )			\
-    return kno_err("TypeError(NNG)",caller # "." # subtype,NULL,x);	      \
+    return kno_err("TypeError(NNG)",caller # subtype,NULL,x);	\
   else NO_ELSE;
 
 #define NNG_GET(x,field) (((kno_nng)x)->nng_ptr.field)
@@ -293,43 +293,43 @@ static lispval nng_getcontext(lispval socket)
 
 void nng_handler_callback(void *obj)
 {
-  struct KNO_NNG_HANDLER *h = obj;
+  struct KNO_NNG *nng = obj;
+  struct KNO_NNG_HANDLER *h = nng->nng_ptr.handler;
   lispval args[3] = { (lispval)h, h->state, h->data };
-  lispval result = kno_apply(h->fn,3,args);
+  lispval result = kno_apply(h->fcn,3,args);
   lispval old_state = h->state;
   h->state = result;
   kno_decref(old_state);
 }
 
 static lispval nng_handler(lispval socket,
-			   lispval fn,
+			   lispval fcn,
 			   lispval data,
 			   lispval init_state)
 {
   CHECK_SOCKETP(socket,"nng/handler");
   struct KNO_NNG *sref = (kno_nng) socket;
   nng_socket sock = sref->nng_ptr.socket;
-  struct KNO_NNG_HANDLER *handler =
-    u8_alloc(struct KNO_NNG_HANDLER);
+  struct KNO_NNG_HANDLER *handler = u8_alloc(struct KNO_NNG_HANDLER);
   handler->sock  = sock;
   handler->fcn   = fcn;
   handler->data  = init_state;
   handler->state = init_state;
   struct KNO_NNG *ref = kno_nng_create(xnng_handler_type);
-  int rv = nng_ctx_open(&(cb->cb_ctx),sock);
+  int rv = nng_ctx_open(&(handler->ctx),sock);
   if (rv == 0)
     rv = nng_aio_alloc(&(handler->aio),
-		       nng_callback_handler,
+		       nng_handler_callback,
 		       ref);
   if (rv == 0) {
     ref->nng_ptr.handler = handler;
-    kno_incref(fn); kno_incref(socket);
-    kno_incref(data); kno_incref(state);
+    kno_incref(fcn); kno_incref(socket);
+    kno_incref(data); kno_incref(init_state);
     KNO_ADD_TO_CHOICE(ref->nng_deps,socket);
-    return (lisvpval) ref;}
+    return (lispval) ref;}
   u8_free(handler);
   u8_free(ref);
-  nng_ctx_close(&(cb->cb_ctx));
+  nng_ctx_close(handler->ctx);
   return KNO_ERROR;
 }
 
