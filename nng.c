@@ -37,12 +37,12 @@ static lispval nng_typemap;
 
 static lispval nng_aio_symbol, nng_ctx_symbol, nng_iov_symbol, nng_msg_symbol,
   nng_url_symbol, nng_pipe_symbol, nng_stat_symbol, nng_dialer_symbol,
-  nng_socket_symbol, nng_stream_symbol, nng_pipe_ev_symbol, 
+  nng_socket_symbol, nng_stream_symbol, nng_pipe_ev_symbol, nng_handler_symbol,
   nng_duration_symbol, nng_listener_symbol, nng_sockaddr_symbol,
-  nng_sockaddr_in_symbol, nng_sockaddr_zt_symbol, nng_sockaddr_in6_symbol, 
+  nng_sockaddr_in_symbol, nng_sockaddr_zt_symbol, nng_sockaddr_in6_symbol,
   nng_sockaddr_ipc_symbol, nng_sockaddr_tcp_symbol, nng_sockaddr_udp_symbol,
   nng_sockaddr_path_symbol, nng_sockaddr_tcp6_symbol, nng_sockaddr_udp6_symbol,
-  nng_stream_dialer_symbol, nng_sockaddr_inproc_symbol, 
+  nng_stream_dialer_symbol, nng_sockaddr_inproc_symbol,
   nng_stream_listener_symbol, nng_pub0_symbol, nng_sub0_symbol,
   nng_req0_symbol, nng_rep0_symbol;
 
@@ -61,6 +61,7 @@ struct KNO_NNG *kno_nng_create(xnng_type type)
   fresh->typetag = get_typesym(type);
   fresh->typeinfo = NULL;
   fresh->nng_type = type;
+  fresh->nng_deps = KNO_EMPTY;
   return fresh;
 }
 
@@ -103,6 +104,12 @@ static lispval mkerr(int rv,u8_context cxt,lispval obj,u8_string details)
 #define CHECK_NNG_TYPE(x,caller)					\
   if (!(KNO_TYPEP(x,kno_nng_type))) return kno_err("NotNNG",caller,NULL,x);
 
+#define CHECK_NNG_SUBTYPE(x,subtype,caller)				\
+  if (!(KNO_TYPEP(x,kno_nng_type))) return kno_err("NotNNG",caller,NULL,x); \
+  else if ( (((kno_nng)(x))->nng_type) != (subtype) )			\
+    return kno_err("TypeError(NNG)",caller # "." # subtype,NULL,x);	      \
+  else NO_ELSE;
+
 #define NNG_GET(x,field) (((kno_nng)x)->nng_ptr.field)
 
 static int socketp(kno_nng ptr)
@@ -135,7 +142,7 @@ static lispval nng_close_prim(lispval ptr)
   case xnng_pub0_type: case xnng_sub0_type: {
     if (nng_close(ref->nng_ptr.socket)) break;
     return KNO_TRUE;}
-    
+
     CLOSE_CASE(dialer);
     CLOSE_CASE(listener);
     CLOSE_CASE(ctx);
@@ -269,6 +276,63 @@ static lispval nng_pair1_prim()
   return LISPVAL(ref);
 }
 
+/* Contexts */
+
+static lispval nng_getcontext(lispval socket)
+{
+  CHECK_SOCKETP(socket,"nng/getcontext");
+  struct KNO_NNG *sref = (kno_nng) socket;
+  nng_socket sock = sref->nng_ptr.socket;
+  struct KNO_NNG *newref = kno_nng_create(xnng_ctx_type);
+  int rv = nng_ctx_open(&(newref->nng_ptr.ctx),sock);
+  if (rv) return KNO_ERROR_VALUE;
+  return LISPVAL(newref);
+}
+
+/* Asynchronouse I/O */
+
+void nng_handler_callback(void *obj)
+{
+  struct KNO_NNG_HANDLER *h = obj;
+  lispval args[3] = { (lispval)h, h->state, h->data };
+  lispval result = kno_apply(h->fn,3,args);
+  lispval old_state = h->state;
+  h->state = result;
+  kno_decref(old_state);
+}
+
+static lispval nng_handler(lispval socket,
+			   lispval fn,
+			   lispval data,
+			   lispval init_state)
+{
+  CHECK_SOCKETP(socket,"nng/handler");
+  struct KNO_NNG *sref = (kno_nng) socket;
+  nng_socket sock = sref->nng_ptr.socket;
+  struct KNO_NNG_HANDLER *handler =
+    u8_alloc(struct KNO_NNG_HANDLER);
+  handler->sock  = sock;
+  handler->fcn   = fcn;
+  handler->data  = init_state;
+  handler->state = init_state;
+  struct KNO_NNG *ref = kno_nng_create(xnng_handler_type);
+  int rv = nng_ctx_open(&(cb->cb_ctx),sock);
+  if (rv == 0)
+    rv = nng_aio_alloc(&(handler->aio),
+		       nng_callback_handler,
+		       ref);
+  if (rv == 0) {
+    ref->nng_ptr.handler = handler;
+    kno_incref(fn); kno_incref(socket);
+    kno_incref(data); kno_incref(state);
+    KNO_ADD_TO_CHOICE(ref->nng_deps,socket);
+    return (lisvpval) ref;}
+  u8_free(handler);
+  u8_free(ref);
+  nng_ctx_close(&(cb->cb_ctx));
+  return KNO_ERROR;
+}
+
 /* Initialization */
 
 KNO_EXPORT int kno_init_nng(void) KNO_LIBINIT_FN;
@@ -291,7 +355,7 @@ KNO_EXPORT int kno_init_nng()
 
   nng_module = kno_new_cmodule("nng",0,kno_init_nng);
   link_local_cprims();
-  
+
   return 1;
 }
 
@@ -342,6 +406,8 @@ static void init_nng_typemap()
   link_typecode(xnng_stream_listener_type,"stream_listener");
 
   link_typecode(xnng_socket_type,"nng_socket");
+  link_typecode(xnng_handler_type,"nng_handler");
+  link_typecode(xnng_aio_type,"nng_aio");
   link_typecode(xnng_pub0_type,"nng_pub0");
   link_typecode(xnng_sub0_type,"nng_sub0");
   link_typecode(xnng_req0_type,"nng_req0");
