@@ -115,6 +115,8 @@ deepclean deep-clean: clean
 
 fresh: clean
 	make default
+deep-fresh: deep-clean
+	make default
 
 gitup gitup-trunk:
 	git checkout trunk && git pull
