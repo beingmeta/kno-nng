@@ -269,6 +269,48 @@ static lispval nng_pair1_prim()
   return LISPVAL(ref);
 }
 
+KNO_DEFPRIM("nng/ctx",nng_ctx_prim,KNO_MIN_ARGS(1),
+	    "Opens an NNG context object associated with a socket")
+static lispval nng_ctx_prim(lispval sock)
+{
+  CHECK_SOCKETP(sock,"nng/recv");
+  struct KNO_NNG *ref = kno_nng_create(xnng_ctx_type);
+  int rv = nng_ctx_open(&(ref->nng_ptr.ctx),NNG_GET(sock,socket));
+  if (rv) return KNO_ERROR_VALUE;
+  return LISPVAL(ref);
+}
+
+static void aio_call_thunk(void *vdata)
+{
+  lispval thunk = (lispval)vdata;
+  if (KNO_APPLICABLEP(thunk)) {
+    lispval result = kno_apply(thunk,0,NULL);
+    if (KNO_ABORTED(result)) {
+      u8_exception ex = u8_erreify();
+      if (ex==NULL)
+	u8_log(LOG_ERR,"NNG/AIO/UndocumentedError",
+	       "Error value without details from %q",
+	       thunk);
+      u8_log(LOG_ERR,"NNG/AIO/Error","%s <%s> (%s) from %q",
+	     ex->u8x_cond,ex->u8x_context,ex->u8x_details,
+	     thunk);
+      u8_free_exception(ex,1);}
+    kno_decref(result);}
+  else u8_log(LOG_CRIT,"NNG/AIO/BadThunk","Can't apply %q",thunk);
+}
+
+KNO_DEFPRIM("nng/aio",nng_aio_prim,KNO_MIN_ARGS(1),
+	    "Opens an NNG AIO object")
+static lispval nng_aio_prim(lispval callback)
+{
+  struct KNO_NNG *ref = kno_nng_create(xnng_ctx_type);
+  int rv = nng_aio_alloc(&(ref->nng_ptr.aio),aio_call_thunk,
+			 (void *)callback);
+  if (rv) return KNO_ERROR_VALUE;
+  kno_incref(callback);
+  return LISPVAL(ref);
+}
+
 /* Initialization */
 
 KNO_EXPORT int kno_init_nng(void) KNO_LIBINIT_FN;
@@ -388,4 +430,6 @@ static void link_local_cprims()
   KNO_LINK_PRIM("nng/dial",nng_dial_prim,3,nng_module);
   KNO_LINK_PRIM("nng/send",nng_send_prim,3,nng_module);
   KNO_LINK_PRIM("nng/recv",nng_recv_prim,3,nng_module);
+  KNO_LINK_PRIM("nng/ctx",nng_ctx_prim,1,nng_module);
+  KNO_LINK_PRIM("nng/aio",nng_aio_prim,1,nng_module);
 }
