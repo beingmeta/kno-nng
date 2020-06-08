@@ -1,4 +1,4 @@
-;;; 
+;;; -*- Mode: Scheme; -*-
 
 (in-module 'nng/server)
 
