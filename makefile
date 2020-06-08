@@ -133,7 +133,8 @@ debian: nng.c makefile \
 	cd debian; chmod a-x ${DEBFILES}
 
 debian/.build_setup:
-	sudo apt install ninja-build cmake
+	if ! which cmake > /dev/null; then sudo apt install cmake; fi
+	if ! which ninja > /dev/null; then sudo apt install ninja-build; fi
 	touch $@
 
 debian/changelog: debian nng.c nng.h makefile
@@ -152,8 +153,13 @@ dist/debian.built: nng.c makefile debian/changelog debian/.build_setup
 	touch $@
 
 dist/debian.signed: dist/debian.built
-	debsign --re-sign -k${GPGID} ../kno-nng_*.changes && \
-	touch $@
+	if test "$GPGID" = "none" || test -z "${GPGID}"; then  	\
+	  echo "Skipping debian signing";			\
+	  touch $@;						\
+	else 							\
+	  debsign --re-sign -k${GPGID} ../kno-nng_*.changes && 	\
+	  touch $@;						\
+	fi;
 
 deb debs dpkg dpkgs: dist/debian.signed
 
