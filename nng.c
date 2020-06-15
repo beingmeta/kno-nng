@@ -1,8 +1,8 @@
 /* -*- Mode: C; Character-encoding: utf-8; -*- */
 
-/* mongodb.c
-   This implements Kno bindings to mongodb.
-   Copyright (C) 2007-2019 beingmeta, inc.
+/* nng.c
+   This implements Kno bindings to nng
+   Copyright (C) 2007-2020 beingmeta, inc.
 */
 
 #ifndef _FILEINFO
@@ -278,6 +278,9 @@ static lispval nng_pair1_prim()
 
 /* Contexts */
 
+KNO_DEFPRIM1("nng/context",nng_getcontext,KNO_MIN_ARGS(1),
+	     "Allocates a context object for a socket",
+	     -1,KNO_VOID)
 static lispval nng_getcontext(lispval socket)
 {
   CHECK_SOCKETP(socket,"nng/getcontext");
@@ -295,41 +298,37 @@ void nng_handler_callback(void *obj)
 {
   struct KNO_NNG *nng = obj;
   struct KNO_NNG_HANDLER *h = nng->nng_ptr.handler;
-  lispval args[3] = { (lispval)h, h->state, h->data };
-  lispval result = kno_apply(h->fcn,3,args);
+  lispval args[2] = { (lispval)h, h->state };
+  lispval result = kno_apply(h->fcn,2,args);
   lispval old_state = h->state;
   h->state = result;
   kno_decref(old_state);
 }
 
-static lispval nng_handler(lispval socket,
-			   lispval fcn,
+static lispval nng_handler(lispval fcn,
 			   lispval data,
 			   lispval init_state)
 {
-  CHECK_SOCKETP(socket,"nng/handler");
-  struct KNO_NNG *sref = (kno_nng) socket;
-  nng_socket sock = sref->nng_ptr.socket;
+  if (!(KNO_APPLICABLEP(fcn)))
+    return kno_err("NotApplicableFunction","nng_handler",NULL,fcn);
   struct KNO_NNG_HANDLER *handler = u8_alloc(struct KNO_NNG_HANDLER);
-  handler->sock  = sock;
   handler->fcn   = fcn;
-  handler->data  = init_state;
+  handler->data  = data;
   handler->state = init_state;
   struct KNO_NNG *ref = kno_nng_create(xnng_handler_type);
-  int rv = nng_ctx_open(&(handler->ctx),sock);
-  if (rv == 0)
-    rv = nng_aio_alloc(&(handler->aio),
-		       nng_handler_callback,
-		       ref);
+  int rv = (ref) ?
+    (nng_aio_alloc(&(handler->aio),
+		   nng_handler_callback,
+		   ref)) :
+    (-1);
   if (rv == 0) {
     ref->nng_ptr.handler = handler;
-    kno_incref(fcn); kno_incref(socket);
-    kno_incref(data); kno_incref(init_state);
-    KNO_ADD_TO_CHOICE(ref->nng_deps,socket);
+    kno_incref(fcn);
+    kno_incref(data);
+    kno_incref(init_state);
     return (lispval) ref;}
   u8_free(handler);
   u8_free(ref);
-  nng_ctx_close(handler->ctx);
   return KNO_ERROR;
 }
 
