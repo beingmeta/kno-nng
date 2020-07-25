@@ -70,7 +70,6 @@ nng.so: nng.o makefile
 	          -Wl,--allow-multiple-definition \
 	          -Wl,--whole-archive ${STATICLIBS} -Wl,--no-whole-archive \
 		  $(LDFLAGS) ${STATICLIBS}
-	 @if test ! -z "${COPY_CMODS}"; then cp $@ ${COPY_CMODS}; fi;
 	 @$(MSG) MKSO "(NNG)" $@
 
 nng.dylib: nng.o
@@ -78,7 +77,6 @@ nng.dylib: nng.o
 		`basename $(@F) .dylib`.${KNO_MAJOR}.dylib \
 		$(DYLIB_FLAGS) $(NNG_LDFLAGS) \
 		-o $@ nng.o 
-	@if test ! -z "${COPY_CMODS}"; then cp $@ ${COPY_CMODS}; fi;
 	@$(MSG) MACLIBTOOL "(NNG)" $@
 
 nng-install/lib/libnng.a: nng-build/build.ninja nng-install
