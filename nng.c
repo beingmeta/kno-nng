@@ -292,18 +292,8 @@ static lispval nng_getcontext(lispval socket)
   return LISPVAL(newref);
 }
 
+<<<<<<< HEAD
 /* Asynchronouse I/O */
-
-void nng_handler_callback(void *obj)
-{
-  struct KNO_NNG *nng = obj;
-  struct KNO_NNG_HANDLER *h = nng->nng_ptr.handler;
-  lispval args[2] = { (lispval)h, h->state };
-  lispval result = kno_apply(h->fcn,2,args);
-  lispval old_state = h->state;
-  h->state = result;
-  kno_decref(old_state);
-}
 
 static lispval nng_handler(lispval fcn,
 			   lispval data,
@@ -330,6 +320,47 @@ static lispval nng_handler(lispval fcn,
   u8_free(handler);
   u8_free(ref);
   return KNO_ERROR;
+
+void nng_handler_callback(void *obj)
+{
+  struct KNO_NNG *nng = obj;
+  struct KNO_NNG_HANDLER *h = nng->nng_ptr.handler;
+  lispval args[2] = { (lispval)h, h->state };
+  lispval result = kno_apply(h->fcn,2,args);
+  lispval old_state = h->state;
+  h->state = result;
+  kno_decref(old_state);
+}
+
+static void aio_call_thunk(void *vdata)
+{
+  lispval thunk = (lispval)vdata;
+  if (KNO_APPLICABLEP(thunk)) {
+    lispval result = kno_apply(thunk,0,NULL);
+    if (KNO_ABORTED(result)) {
+      u8_exception ex = u8_erreify();
+      if (ex==NULL)
+	u8_log(LOG_ERR,"NNG/AIO/UndocumentedError",
+	       "Error value without details from %q",
+	       thunk);
+      u8_log(LOG_ERR,"NNG/AIO/Error","%s <%s> (%s) from %q",
+	     ex->u8x_cond,ex->u8x_context,ex->u8x_details,
+	     thunk);
+      u8_free_exception(ex,1);}
+    kno_decref(result);}
+  else u8_log(LOG_CRIT,"NNG/AIO/BadThunk","Can't apply %q",thunk);
+}
+
+KNO_DEFPRIM("nng/aio",nng_aio_prim,KNO_MIN_ARGS(1),
+	    "Opens an NNG AIO object")
+static lispval nng_aio_prim(lispval callback)
+{
+  struct KNO_NNG *ref = kno_nng_create(xnng_ctx_type);
+  int rv = nng_aio_alloc(&(ref->nng_ptr.aio),aio_call_thunk,
+			 (void *)callback);
+  if (rv) return KNO_ERROR_VALUE;
+  kno_incref(callback);
+  return LISPVAL(ref);
 }
 
 /* Initialization */
@@ -453,4 +484,6 @@ static void link_local_cprims()
   KNO_LINK_PRIM("nng/dial",nng_dial_prim,3,nng_module);
   KNO_LINK_PRIM("nng/send",nng_send_prim,3,nng_module);
   KNO_LINK_PRIM("nng/recv",nng_recv_prim,3,nng_module);
+  KNO_LINK_PRIM("nng/ctx",nng_ctx_prim,1,nng_module);
+  KNO_LINK_PRIM("nng/aio",nng_aio_prim,1,nng_module);
 }

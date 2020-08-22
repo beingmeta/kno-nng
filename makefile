@@ -11,10 +11,16 @@ INCLUDE		::= $(shell ${KNOCONFIG} include)
 KNO_VERSION	::= $(shell ${KNOCONFIG} version)
 KNO_MAJOR	::= $(shell ${KNOCONFIG} major)
 KNO_MINOR	::= $(shell ${KNOCONFIG} minor)
-PKG_RELEASE	::= $(cat ./etc/release)
-DPKG_NAME	::= $(shell ./etc/dpkgname)
-SUDO            ::= $(shell which sudo)
+PKG_VERSION     ::= $(shell cat ./version)
+PKG_MAJOR       ::= $(shell cat ./version | cut -d. -f1)
+FULL_VERSION    ::= ${KNO_MAJOR}.${KNO_MINOR}.${PKG_VERSION}
+PATCHLEVEL      ::= $(shell u8_gitpatchcount ./version)
+PATCH_VERSION   ::= ${FULL_VERSION}-${PATCHLEVEL}
 
+PKG_NAME	::= nng
+DPKG_NAME	::= ${PKG_NAME}_${PATCH_VERSION}
+
+SUDO            ::= $(shell which sudo)
 INIT_CFLAGS     ::= ${CFLAGS}
 INIT_LDFLAGS    ::= ${LDFLAGS}
 KNO_CFLAGS	::= -I. -fPIC $(shell ${KNOCONFIG} cflags)
@@ -29,10 +35,7 @@ SYSINSTALL        = /usr/bin/install -c
 DIRINSTALL        = /usr/bin/install -d
 MSG		  = echo
 
-PKG_NAME	  = nng
 GPGID             = FE1BC737F9F323D732AA26330620266BE5AFF294
-PKG_VERSION	  = ${KNO_MAJOR}.${KNO_MINOR}.${PKG_RELEASE}
-PKG_RELEASE     ::= $(shell cat etc/release)
 CODENAME	::= $(shell ${KNOCONFIG} codename)
 REL_BRANCH	::= $(shell ${KNOBUILD} getbuildopt REL_BRANCH current)
 REL_STATUS	::= $(shell ${KNOBUILD} getbuildopt REL_STATUS stable)
@@ -63,11 +66,10 @@ nng.o: nng.c makefile ${STATICLIBS}
 	$(CC) $(CFLAGS) -o $@ -c $<
 	@$(MSG) CC "(NNG)" $@
 nng.so: nng.o makefile
-	 @$(MKSO) -o $@ nng.o -Wl,-soname=$(@F).${PKG_VERSION} \
+	 @$(MKSO) -o $@ nng.o -Wl,-soname=$(@F).${FULL_VERSION} \
 	          -Wl,--allow-multiple-definition \
 	          -Wl,--whole-archive ${STATICLIBS} -Wl,--no-whole-archive \
 		  $(LDFLAGS) ${STATICLIBS}
-	 @if test ! -z "${COPY_CMODS}"; then cp $@ ${COPY_CMODS}; fi;
 	 @$(MSG) MKSO "(NNG)" $@
 
 nng.dylib: nng.o
@@ -75,7 +77,6 @@ nng.dylib: nng.o
 		`basename $(@F) .dylib`.${KNO_MAJOR}.dylib \
 		$(DYLIB_FLAGS) $(NNG_LDFLAGS) \
 		-o $@ nng.o 
-	@if test ! -z "${COPY_CMODS}"; then cp $@ ${COPY_CMODS}; fi;
 	@$(MSG) MACLIBTOOL "(NNG)" $@
 
 nng-install/lib/libnng.a: nng-build/build.ninja nng-install
@@ -93,14 +94,16 @@ ${CMODULES}:
 	@install -d ${CMODULES}
 
 install: ${CMODULES}
-	@${SUDO} ${SYSINSTALL} ${PKG_NAME}.${libsuffix} ${CMODULES}/${PKG_NAME}.so.${PKG_VERSION}
-	@echo === Installed ${CMODULES}/${PKG_NAME}.so.${PKG_VERSION}
-	@${SUDO} ln -sf ${PKG_NAME}.so.${PKG_VERSION} ${CMODULES}/${PKG_NAME}.so.${KNO_MAJOR}.${KNO_MINOR}
-	@echo === Linked ${CMODULES}/${PKG_NAME}.so.${KNO_MAJOR}.${KNO_MINOR} to ${PKG_NAME}.so.${PKG_VERSION}
-	@${SUDO} ln -sf ${PKG_NAME}.so.${PKG_VERSION} ${CMODULES}/${PKG_NAME}.so.${KNO_MAJOR}
-	@echo === Linked ${CMODULES}/${PKG_NAME}.so.${KNO_MAJOR} to ${PKG_NAME}.so.${PKG_VERSION}
-	@${SUDO} ln -sf ${PKG_NAME}.so.${PKG_VERSION} ${CMODULES}/${PKG_NAME}.so
-	@echo === Linked ${CMODULES}/${PKG_NAME}.so to ${PKG_NAME}.so.${PKG_VERSION}
+	@${SUDO} ${SYSINSTALL} ${PKG_NAME}.${libsuffix} ${CMODULES}/${PKG_NAME}.so.${FULL_VERSION}
+	@echo === Installed ${CMODULES}/${PKG_NAME}.so.${FULL_VERSION}
+	@${SUDO} ln -sf ${PKG_NAME}.so.${FULL_VERSION} ${CMODULES}/${PKG_NAME}.so.${KNO_MAJOR}.${KNO_MINOR}.${PKG_MAJOR}
+	@echo === Linked ${CMODULES}/${PKG_NAME}.so.${KNO_MAJOR}.${KNO_MINOR}.${PKG_MAJOR} to ${PKG_NAME}.so.${FULL_VERSION}
+	@${SUDO} ln -sf ${PKG_NAME}.so.${FULL_VERSION} ${CMODULES}/${PKG_NAME}.so.${KNO_MAJOR}.${KNO_MINOR}
+	@echo === Linked ${CMODULES}/${PKG_NAME}.so.${KNO_MAJOR}.${KNO_MINOR} to ${PKG_NAME}.so.${FULL_VERSION}
+	@${SUDO} ln -sf ${PKG_NAME}.so.${FULL_VERSION} ${CMODULES}/${PKG_NAME}.so.${KNO_MAJOR}
+	@echo === Linked ${CMODULES}/${PKG_NAME}.so.${KNO_MAJOR} to ${PKG_NAME}.so.${FULL_VERSION}
+	@${SUDO} ln -sf ${PKG_NAME}.so.${FULL_VERSION} ${CMODULES}/${PKG_NAME}.so
+	@echo === Linked ${CMODULES}/${PKG_NAME}.so to ${PKG_NAME}.so.${FULL_VERSION}
 
 embed-install update:
 	@if test -d ../../../lib/kno; then \
@@ -114,6 +117,8 @@ deepclean deep-clean: clean
 	rm -rf nng-build nng-install
 
 fresh: clean
+	make default
+deep-fresh: deep-clean
 	make default
 
 gitup gitup-trunk:
@@ -131,7 +136,8 @@ debian: nng.c makefile \
 	cd debian; chmod a-x ${DEBFILES}
 
 debian/.build_setup:
-	sudo apt install ninja-build cmake
+	if ! which cmake > /dev/null; then sudo apt install cmake; fi
+	if ! which ninja > /dev/null; then sudo apt install ninja-build; fi
 	touch $@
 
 debian/changelog: debian nng.c nng.h makefile
@@ -150,8 +156,13 @@ dist/debian.built: nng.c makefile debian/changelog debian/.build_setup
 	touch $@
 
 dist/debian.signed: dist/debian.built
-	debsign --re-sign -k${GPGID} ../kno-nng_*.changes && \
-	touch $@
+	if test "$GPGID" = "none" || test -z "${GPGID}"; then  	\
+	  echo "Skipping debian signing";			\
+	  touch $@;						\
+	else 							\
+	  debsign --re-sign -k${GPGID} ../kno-nng_*.changes && 	\
+	  touch $@;						\
+	fi;
 
 deb debs dpkg dpkgs: dist/debian.signed
 
@@ -176,16 +187,22 @@ staging/alpine/APKBUILD: dist/alpine/APKBUILD staging/alpine
 staging/alpine/kno-${PKG_NAME}.tar: staging/alpine
 	git archive --prefix=kno-${PKG_NAME}/ -o staging/alpine/kno-${PKG_NAME}.tar HEAD
 
-dist/alpine.done: staging/alpine/APKBUILD makefile ${STATICLIBS} \
+dist/alpine.setup: staging/alpine/APKBUILD makefile ${STATICLIBS} \
 	staging/alpine/kno-${PKG_NAME}.tar
-	if [ ! -d ${APK_ARCH_DIR} ]; then mkdir -p ${APK_ARCH_DIR}; fi;
-	cd staging/alpine; \
+	if [ ! -d ${APK_ARCH_DIR} ]; then mkdir -p ${APK_ARCH_DIR}; fi && \
+	( cd staging/alpine; \
 		abuild -P ${APKREPO} clean cleancache cleanpkg && \
-		abuild checksum && \
-		abuild -P ${APKREPO} && \
-		touch ../../$@
+		abuild checksum ) && \
+	touch $@
+
+dist/alpine.done: dist/alpine.setup
+	( cd staging/alpine; abuild -P ${APKREPO} ) && touch $@
+dist/alpine.installed: dist/alpine.setup
+	( cd staging/alpine; abuild -i -P ${APKREPO} ) && touch dist/alpine.done && touch $@
+
 
 alpine: dist/alpine.done
+install-alpine: dist/alpine.done
 
 .PHONY: alpine
 
