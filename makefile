@@ -44,8 +44,32 @@ ARCH            ::= $(shell ${KNOBUILD} getbuildopt BUILD_ARCH || uname -m)
 APKREPO         ::= $(shell ${KNOBUILD} getbuildopt APKREPO /srv/repo/kno/apk)
 APK_ARCH_DIR      = ${APKREPO}/staging/${ARCH}
 
-default: staticlibs
+# Meta targets
+
+# .buildmode contains the default build target (standard|debugging)
+# debug/normal targets change the buildmode
+# module build targets depend on .buildmode
+
+default build: staticlibs .buildmode
+	make $(shell cat .buildmode)
+
+module: staticlibs
 	make nng.${libsuffix}
+
+standard:
+	make module
+debugging:
+	make XCFLAGS="-O0 -g3" module
+
+.buildmode:
+	echo standard > .buildmode
+
+debug:
+	echo debugging > .buildmode
+	make
+normal:
+	echo standard > .buildmode
+	make
 
 STATICLIBS=${NNGINSTALL}/lib/libnng.a
 
@@ -62,10 +86,10 @@ nng-build/build.ninja: nng/.git nng-build
 	      -DCMAKE_INSTALL_PREFIX=../nng-install \
 	      ../nng
 
-nng.o: nng.c makefile ${STATICLIBS}
+nng.o: nng.c makefile ${STATICLIBS} .buildmode
 	$(CC) $(CFLAGS) -o $@ -c $<
 	@$(MSG) CC "(NNG)" $@
-nng.so: nng.o makefile
+nng.so: nng.o makefile .buildmode
 	 @$(MKSO) -o $@ nng.o -Wl,-soname=$(@F).${FULL_VERSION} \
 	          -Wl,--allow-multiple-definition \
 	          -Wl,--whole-archive ${STATICLIBS} -Wl,--no-whole-archive \

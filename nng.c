@@ -19,6 +19,7 @@ static int knonng_loglevel;
 #include "kno/compounds.h"
 #include "kno/numbers.h"
 #include "kno/eval.h"
+#include "kno/xtypes.h"
 #include "kno/sequences.h"
 #include "kno/texttools.h"
 #include "kno/bigints.h"
@@ -161,7 +162,7 @@ KNO_DEFPRIM3("nng/listen",nng_listen_prim,KNO_MIN_ARGS(2),
 static lispval nng_listen_prim(lispval sock,lispval url,lispval opts)
 {
   CHECK_SOCKETP(sock,"nng/listen");
-  struct KNO_NNG *l = kno_nng_create(xnng_listener_type);  
+  struct KNO_NNG *l = kno_nng_create(xnng_listener_type);
   int rv = nng_listen(NNG_GET(sock,socket),KNO_CSTRING(url),
 		      &(NNG_GET(l,listener)),0);
   if (rv) return mkerr(rv,"nng/listen",sock,KNO_CSTRING(url));
@@ -174,7 +175,7 @@ KNO_DEFPRIM3("nng/dial",nng_dial_prim,KNO_MIN_ARGS(2),
 static lispval nng_dial_prim(lispval sock,lispval url,lispval opts)
 {
   CHECK_SOCKETP(sock,"nng/dial");
-  struct KNO_NNG *d = kno_nng_create(xnng_dialer_type);  
+  struct KNO_NNG *d = kno_nng_create(xnng_dialer_type);
   int rv = nng_dial(NNG_GET(sock,socket),KNO_CSTRING(url),
 		    &(NNG_GET(d,dialer)),0);
   if (rv) return mkerr(rv,"nng/dial",sock,KNO_CSTRING(url));
@@ -292,8 +293,18 @@ static lispval nng_getcontext(lispval socket)
   return LISPVAL(newref);
 }
 
-<<<<<<< HEAD
 /* Asynchronouse I/O */
+
+void nng_handler_callback(void *obj)
+{
+  struct KNO_NNG *nng = obj;
+  struct KNO_NNG_HANDLER *h = nng->nng_ptr.handler;
+  lispval args[2] = { (lispval)h, h->state };
+  lispval result = kno_apply(h->fcn,2,args);
+  lispval old_state = h->state;
+  h->state = result;
+  kno_decref(old_state);
+}
 
 static lispval nng_handler(lispval fcn,
 			   lispval data,
@@ -320,16 +331,6 @@ static lispval nng_handler(lispval fcn,
   u8_free(handler);
   u8_free(ref);
   return KNO_ERROR;
-
-void nng_handler_callback(void *obj)
-{
-  struct KNO_NNG *nng = obj;
-  struct KNO_NNG_HANDLER *h = nng->nng_ptr.handler;
-  lispval args[2] = { (lispval)h, h->state };
-  lispval result = kno_apply(h->fcn,2,args);
-  lispval old_state = h->state;
-  h->state = result;
-  kno_decref(old_state);
 }
 
 static void aio_call_thunk(void *vdata)
@@ -361,6 +362,76 @@ static lispval nng_aio_prim(lispval callback)
   if (rv) return KNO_ERROR_VALUE;
   kno_incref(callback);
   return LISPVAL(ref);
+}
+
+/* Services */
+
+static void waiter_callback(void *arg);
+
+struct KNO_NNG_SERVER *make_server(u8_string addr,int n_waiters,lispval handlers)
+{
+  struct KNO_NNG_SERVER *server = u8_alloc(struct KNO_NNG_SERVER);
+  int flags = 0;
+  int rv = nng_rep0_open(&(server->socket));
+  if (rv) {}
+  rv = nng_listen(server->socket,addr,&(server->listener),flags);
+  if (rv) {}
+  struct KNO_NNG_WAITER *waiters = u8_alloc_n(n_waiters,struct KNO_NNG_WAITER);
+  int i = 0; while (i<n_waiters) {
+    waiters[i].state = INIT;
+    waiters[i].server = server;
+    rv = nng_ctx_open(&(waiters[i].ctx),server->socket);
+    if (rv) {}
+    rv = nng_aio_alloc(&(waiters[i].aio),waiter_callback,&(waiters[i]));
+    if (rv) {}
+    i++;}
+  server->waiters = waiters;
+  server->n_waiters = n_waiters;
+  server->handlers = kno_incref(handlers);
+  // kno_init_xrefs(&(server->xrefs));
+  return server;
+}
+
+static void waiter_callback(void *arg)
+{
+  struct KNO_NNG_WAITER *waiter = arg;
+  struct KNO_NNG_SERVER *server = waiter->server;
+  switch (waiter->state) {
+  case INIT:
+    waiter->state = RECV;
+    nng_ctx_recv(waiter->ctx,waiter->aio);
+    return;
+  case RECV:
+    if ( (nng_aio_result(waiter->aio))!=0 ) {}
+    nng_msg *request = nng_aio_get_msg(waiter->aio);
+    unsigned char *reqdata = nng_msg_body(request);
+    ssize_t reqlen = nng_msg_len(request);
+    lispval req = kno_decode_xtype(reqdata,reqlen,&(server->xrefs));
+    nng_msg_free(request);
+    waiter->request = req;
+    lispval result = kno_exec(req,server->handlers,NULL);
+    waiter->response = result;
+    ssize_t response_len;
+    unsigned char *response = kno_encode_xtype(result,&response_len,&(server->xrefs));
+    int rv = nng_msg_alloc(&(waiter->response_msg),response_len);
+    if (rv) {}
+    rv = nng_msg_append(waiter->response_msg,response,response_len);
+    nng_aio_set_msg(waiter->aio,waiter->response_msg);
+    u8_free(response);
+    nng_ctx_send(waiter->ctx,waiter->aio);
+    waiter->state = SEND;
+    return;
+  case SEND:
+    if ( (nng_aio_result(waiter->aio))!=0 ) {}
+    nng_msg_free(waiter->response_msg); waiter->response_msg = NULL;
+    kno_decref(waiter->request); waiter->request = KNO_VOID;
+    kno_decref(waiter->response); waiter->response = KNO_VOID;
+    nng_ctx_recv(waiter->ctx,waiter->aio);
+    waiter->state = RECV;
+    return;
+  default:
+    return;
+  }
 }
 
 /* Initialization */
@@ -484,6 +555,6 @@ static void link_local_cprims()
   KNO_LINK_PRIM("nng/dial",nng_dial_prim,3,nng_module);
   KNO_LINK_PRIM("nng/send",nng_send_prim,3,nng_module);
   KNO_LINK_PRIM("nng/recv",nng_recv_prim,3,nng_module);
-  KNO_LINK_PRIM("nng/ctx",nng_ctx_prim,1,nng_module);
+  KNO_LINK_PRIM("nng/getcontext",nng_getcontext,1,nng_module);
   KNO_LINK_PRIM("nng/aio",nng_aio_prim,1,nng_module);
 }

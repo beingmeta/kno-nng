@@ -86,3 +86,20 @@ typedef struct KNO_NNG {
   xnng_type nng_type;
   xnng_ptr nng_ptr;} *kno_nng;
 
+/* Services */
+
+struct KNO_NNG_WAITER {
+  struct KNO_NNG_SERVER *server;
+  nng_ctx ctx;
+  nng_aio *aio;
+  lispval request, response;
+  nng_msg *response_msg;
+  enum waiter_state { INIT, RECV, RUN, SEND } state;};
+
+struct KNO_NNG_SERVER {
+  nng_socket socket;
+  nng_listener listener;
+  int n_waiters;
+  struct KNO_NNG_WAITER *waiters;
+  lispval handlers;
+  struct XTYPE_REFS xrefs;};
