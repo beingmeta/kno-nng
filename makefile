@@ -25,6 +25,7 @@ INIT_CFLAGS     ::= ${CFLAGS}
 INIT_LDFLAGS    ::= ${LDFLAGS}
 KNO_CFLAGS	::= -I. -fPIC $(shell ${KNOCONFIG} cflags)
 KNO_LDFLAGS	::= -fPIC $(shell ${KNOCONFIG} ldflags)
+KNO_LIBS	::= $(shell ${KNOCONFIG} libs)
 NNG_CFLAGS      ::= -I${NNGINSTALL}/include
 NNG_LDFLAGS     ::= -L${NNGINSTALL}/lib -lnng
 
