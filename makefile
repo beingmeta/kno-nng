@@ -174,12 +174,13 @@ dist/debian.built: nng.c makefile debian/changelog debian/.build_setup
 	touch $@
 
 dist/debian.signed: dist/debian.built
-	if test "$GPGID" = "none" || test -z "${GPGID}"; then  	\
-	  echo "Skipping debian signing";			\
-	  touch $@;						\
-	else 							\
-	  debsign --re-sign -k${GPGID} ../kno-nng_*.changes && 	\
-	  touch $@;						\
+	@if test "${GPGID}" = "none" || test -z "${GPGID}"; then	\
+	  echo "Skipping debian signing";				\
+	  touch $@;							\
+	else 								\
+	  echo debsign --re-sign -k${GPGID} ../kno-nng_*.changes;	\
+	  debsign --re-sign -k${GPGID} ../kno-nng_*.changes && 		\
+	  touch $@;							\
 	fi;
 
 deb debs dpkg dpkgs: dist/debian.signed
