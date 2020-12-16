@@ -90,7 +90,7 @@ nng-build/build.ninja: nng/.git nng-build
 	      ../nng
 
 nng.o: nng.c makefile ${STATICLIBS} .buildmode
-	$(CC) $(CFLAGS) -o $@ -c $<
+	$(CC) $(CFLAGS) -D_FILEINFO="\"$(shell u8_fileinfo ./$< $(dirname $(pwd))/)\""  -o $@ -c $<
 	@$(MSG) CC "(NNG)" $@
 nng.so: nng.o makefile .buildmode
 	 @$(MKSO) -o $@ nng.o -Wl,-soname=$(@F).${FULL_VERSION} \

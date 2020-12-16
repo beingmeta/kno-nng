@@ -74,10 +74,14 @@ static int unparse_nng_wrapper(u8_output out,lispval x)
   return 1;
 }
 
-KNO_DEFPRIM2("nng?",nngp_prim,KNO_MIN_ARGS(1),
-	     "`(NNG? *obj* [*tag*]) returns #t if *obj* is "
-	     "an NNG object and has the typetag *tag* (if provided)",
-	     -1,KNO_VOID,kno_symbol_type,KNO_VOID)
+
+KNO_DEFCPRIM("nng?",nngp_prim,
+	     KNO_MAX_ARGS(2)|KNO_MIN_ARGS(1),
+	     "`(NNG? *obj* [*tag*]) "
+	     "returns #t if *obj* is an NNG object and has the "
+	     "typetag *tag* (if provided)",
+	     "x",kno_any_type,KNO_VOID,
+	     "tag",kno_symbol_type,KNO_VOID)
 static lispval nngp_prim(lispval x,lispval tag)
 {
   if (!(KNO_TYPEP(x,kno_nng_type)))
@@ -129,9 +133,11 @@ static int socketp(kno_nng ptr)
   else NO_ELSE;
 
 
-KNO_DEFPRIM1("nng/close",nng_close_prim,KNO_MIN_ARGS(1),
+
+KNO_DEFCPRIM("nng/close",nng_close_prim,
+	     KNO_MAX_ARGS(1)|KNO_MIN_ARGS(1),
 	     "Closes an NNG object",
-	     -1,KNO_VOID)
+	     "ptr",kno_any_type,KNO_VOID)
 static lispval nng_close_prim(lispval ptr)
 {
   CHECK_NNG_TYPE(ptr,"nng/close");
@@ -156,9 +162,14 @@ static lispval nng_close_prim(lispval ptr)
   else return KNO_TRUE;
 }
 
-KNO_DEFPRIM3("nng/listen",nng_listen_prim,KNO_MIN_ARGS(2),
-	     "(NNG/LISTEN *sock* *url*)\nStart listening on *url* using *sock*",
-	     -1,KNO_VOID,kno_string_type,KNO_VOID,-1,KNO_FALSE)
+
+KNO_DEFCPRIM("nng/listen",nng_listen_prim,
+	     KNO_MAX_ARGS(3)|KNO_MIN_ARGS(2),
+	     "(NNG/LISTEN *sock* *url*)\n"
+	     "Start listening on *url* using *sock*",
+	     "sock",kno_any_type,KNO_VOID,
+	     "url",kno_string_type,KNO_VOID,
+	     "opts",kno_any_type,KNO_FALSE)
 static lispval nng_listen_prim(lispval sock,lispval url,lispval opts)
 {
   CHECK_SOCKETP(sock,"nng/listen");
@@ -169,9 +180,14 @@ static lispval nng_listen_prim(lispval sock,lispval url,lispval opts)
   else return LISPVAL(l);
 }
 
-KNO_DEFPRIM3("nng/dial",nng_dial_prim,KNO_MIN_ARGS(2),
-	     "(NNG/DIAL *sock* *url*)\nStart listening on *url* using *sock*",
-	     -1,KNO_VOID,kno_string_type,KNO_VOID,-1,KNO_FALSE)
+
+KNO_DEFCPRIM("nng/dial",nng_dial_prim,
+	     KNO_MAX_ARGS(3)|KNO_MIN_ARGS(2),
+	     "(NNG/DIAL *sock* *url*)\n"
+	     "Start listening on *url* using *sock*",
+	     "sock",kno_any_type,KNO_VOID,
+	     "url",kno_string_type,KNO_VOID,
+	     "opts",kno_any_type,KNO_FALSE)
 static lispval nng_dial_prim(lispval sock,lispval url,lispval opts)
 {
   CHECK_SOCKETP(sock,"nng/dial");
@@ -182,9 +198,14 @@ static lispval nng_dial_prim(lispval sock,lispval url,lispval opts)
   else return LISPVAL(d);
 }
 
-KNO_DEFPRIM3("nng/send",nng_send_prim,KNO_MIN_ARGS(2),
-	     "(NNG/SEND *sock* *packet* [*opts*])\nSend *packet* to *sock*",
-	     -1,KNO_VOID,-1,KNO_VOID,-1,KNO_FALSE)
+
+KNO_DEFCPRIM("nng/send",nng_send_prim,
+	     KNO_MAX_ARGS(3)|KNO_MIN_ARGS(2),
+	     "(NNG/SEND *sock* *packet* [*opts*])\n"
+	     "Send *packet* to *sock*",
+	     "sock",kno_any_type,KNO_VOID,
+	     "data",kno_any_type,KNO_VOID,
+	     "opts",kno_any_type,KNO_FALSE)
 static lispval nng_send_prim(lispval sock,lispval data,lispval opts)
 {
   CHECK_SOCKETP(sock,"nng/send");
@@ -201,9 +222,14 @@ static lispval nng_send_prim(lispval sock,lispval data,lispval opts)
   else return kno_incref(sock);
 }
 
-KNO_DEFPRIM3("nng/recv",nng_recv_prim,KNO_MIN_ARGS(1),
-	     "(NNG/RECV *sock* [*opts*] [*packet*])\n Receive data from *sock*",
-	     -1,KNO_VOID,-1,KNO_VOID,-1,KNO_VOID)
+
+KNO_DEFCPRIM("nng/recv",nng_recv_prim,
+	     KNO_MAX_ARGS(3)|KNO_MIN_ARGS(1),
+	     "(NNG/RECV *sock* [*opts*] [*packet*])\n "
+	     "Receive data from *sock*",
+	     "sock",kno_any_type,KNO_VOID,
+	     "opts",kno_any_type,KNO_VOID,
+	     "buf",kno_any_type,KNO_VOID)
 static lispval nng_recv_prim(lispval sock,lispval opts,lispval buf)
 {
   CHECK_SOCKETP(sock,"nng/recv");
@@ -217,8 +243,10 @@ static lispval nng_recv_prim(lispval sock,lispval opts,lispval buf)
     return result;}
 }
 
-KNO_DEFPRIM("nng/pubsock",nng_pubsock_prim,KNO_MIN_ARGS(0),
-	    "Opens an NNG publish socket")
+
+KNO_DEFCPRIM("nng/pubsock",nng_pubsock_prim,
+	     KNO_MAX_ARGS(0)|KNO_MIN_ARGS(0),
+	     "Opens an NNG publish socket")
 static lispval nng_pubsock_prim()
 {
   struct KNO_NNG *ref = kno_nng_create(xnng_pub0_type);
@@ -227,8 +255,10 @@ static lispval nng_pubsock_prim()
   return LISPVAL(ref);
 }
 
-KNO_DEFPRIM("nng/subsock",nng_subsock_prim,KNO_MIN_ARGS(0),
-	    "Opens an NNG subscribe socket")
+
+KNO_DEFCPRIM("nng/subsock",nng_subsock_prim,
+	     KNO_MAX_ARGS(0)|KNO_MIN_ARGS(0),
+	     "Opens an NNG subscribe socket")
 static lispval nng_subsock_prim()
 {
   struct KNO_NNG *ref = kno_nng_create(xnng_sub0_type);
@@ -237,8 +267,10 @@ static lispval nng_subsock_prim()
   return LISPVAL(ref);
 }
 
-KNO_DEFPRIM("nng/reqsock",nng_reqsock_prim,KNO_MIN_ARGS(0),
-	    "Opens an NNG request socket")
+
+KNO_DEFCPRIM("nng/reqsock",nng_reqsock_prim,
+	     KNO_MAX_ARGS(0)|KNO_MIN_ARGS(0),
+	     "Opens an NNG request socket")
 static lispval nng_reqsock_prim()
 {
   struct KNO_NNG *ref = kno_nng_create(xnng_req0_type);
@@ -247,8 +279,10 @@ static lispval nng_reqsock_prim()
   return LISPVAL(ref);
 }
 
-KNO_DEFPRIM("nng/repsock",nng_repsock_prim,KNO_MIN_ARGS(0),
-	    "Opens an NNG reply socket")
+
+KNO_DEFCPRIM("nng/repsock",nng_repsock_prim,
+	     KNO_MAX_ARGS(0)|KNO_MIN_ARGS(0),
+	     "Opens an NNG reply socket")
 static lispval nng_repsock_prim()
 {
   struct KNO_NNG *ref = kno_nng_create(xnng_rep0_type);
@@ -257,8 +291,10 @@ static lispval nng_repsock_prim()
   return LISPVAL(ref);
 }
 
-KNO_DEFPRIM("nng/pair0",nng_pair0_prim,KNO_MIN_ARGS(0),
-	    "Opens an NNG pair0 socket")
+
+KNO_DEFCPRIM("nng/pair0",nng_pair0_prim,
+	     KNO_MAX_ARGS(0)|KNO_MIN_ARGS(0),
+	     "Opens an NNG pair0 socket")
 static lispval nng_pair0_prim()
 {
   struct KNO_NNG *ref = kno_nng_create(xnng_pair0_type);
@@ -267,8 +303,10 @@ static lispval nng_pair0_prim()
   return LISPVAL(ref);
 }
 
-KNO_DEFPRIM("nng/pair1",nng_pair1_prim,KNO_MIN_ARGS(0),
-	    "Opens an NNG pair1 socket")
+
+KNO_DEFCPRIM("nng/pair1",nng_pair1_prim,
+	     KNO_MAX_ARGS(0)|KNO_MIN_ARGS(0),
+	     "Opens an NNG pair1 socket")
 static lispval nng_pair1_prim()
 {
   struct KNO_NNG *ref = kno_nng_create(xnng_pair1_type);
@@ -279,9 +317,11 @@ static lispval nng_pair1_prim()
 
 /* Contexts */
 
-KNO_DEFPRIM1("nng/context",nng_getcontext,KNO_MIN_ARGS(1),
+
+KNO_DEFCPRIM("nng/context",nng_getcontext,
+	     KNO_MAX_ARGS(1)|KNO_MIN_ARGS(1),
 	     "Allocates a context object for a socket",
-	     -1,KNO_VOID)
+	     "socket",kno_any_type,KNO_VOID)
 static lispval nng_getcontext(lispval socket)
 {
   CHECK_SOCKETP(socket,"nng/getcontext");
@@ -352,8 +392,10 @@ static void aio_call_thunk(void *vdata)
   else u8_log(LOG_CRIT,"NNG/AIO/BadThunk","Can't apply %q",thunk);
 }
 
-KNO_DEFPRIM("nng/aio",nng_aio_prim,KNO_MIN_ARGS(1),
-	    "Opens an NNG AIO object")
+
+KNO_DEFCPRIM("nng/aio",nng_aio_prim,
+	     KNO_MAX_ARGS(0)|KNO_MIN_ARGS(0),
+	     "Opens an NNG AIO object")
 static lispval nng_aio_prim(lispval callback)
 {
   struct KNO_NNG *ref = kno_nng_create(xnng_ctx_type);
@@ -543,18 +585,18 @@ static void init_nng_typemap()
 
 static void link_local_cprims()
 {
-  KNO_LINK_PRIM("nng?",nngp_prim,2,nng_module);
-  KNO_LINK_PRIM("nng/close",nng_close_prim,1,nng_module);
-  KNO_LINK_PRIM("nng/pubsock",nng_pubsock_prim,0,nng_module);
-  KNO_LINK_PRIM("nng/subsock",nng_subsock_prim,0,nng_module);
-  KNO_LINK_PRIM("nng/reqsock",nng_reqsock_prim,0,nng_module);
-  KNO_LINK_PRIM("nng/repsock",nng_repsock_prim,0,nng_module);
-  KNO_LINK_PRIM("nng/pair0",nng_pair0_prim,0,nng_module);
-  KNO_LINK_PRIM("nng/pair1",nng_pair1_prim,0,nng_module);
-  KNO_LINK_PRIM("nng/listen",nng_listen_prim,3,nng_module);
-  KNO_LINK_PRIM("nng/dial",nng_dial_prim,3,nng_module);
-  KNO_LINK_PRIM("nng/send",nng_send_prim,3,nng_module);
-  KNO_LINK_PRIM("nng/recv",nng_recv_prim,3,nng_module);
-  KNO_LINK_PRIM("nng/getcontext",nng_getcontext,1,nng_module);
-  KNO_LINK_PRIM("nng/aio",nng_aio_prim,1,nng_module);
+  KNO_LINK_CPRIM("nng?",nngp_prim,2,nng_module);
+  KNO_LINK_CPRIM("nng/close",nng_close_prim,1,nng_module);
+  KNO_LINK_CPRIM("nng/pubsock",nng_pubsock_prim,0,nng_module);
+  KNO_LINK_CPRIM("nng/subsock",nng_subsock_prim,0,nng_module);
+  KNO_LINK_CPRIM("nng/reqsock",nng_reqsock_prim,0,nng_module);
+  KNO_LINK_CPRIM("nng/repsock",nng_repsock_prim,0,nng_module);
+  KNO_LINK_CPRIM("nng/pair0",nng_pair0_prim,0,nng_module);
+  KNO_LINK_CPRIM("nng/pair1",nng_pair1_prim,0,nng_module);
+  KNO_LINK_CPRIM("nng/listen",nng_listen_prim,3,nng_module);
+  KNO_LINK_CPRIM("nng/dial",nng_dial_prim,3,nng_module);
+  KNO_LINK_CPRIM("nng/send",nng_send_prim,3,nng_module);
+  KNO_LINK_CPRIM("nng/recv",nng_recv_prim,3,nng_module);
+  KNO_LINK_CPRIM("nng/getcontext",nng_getcontext,1,nng_module);
+  KNO_LINK_CPRIM("nng/aio",nng_aio_prim,1,nng_module);
 }
