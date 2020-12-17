@@ -80,8 +80,8 @@ KNO_DEFCPRIM("nng?",nngp_prim,
 	     "`(NNG? *obj* [*tag*]) "
 	     "returns #t if *obj* is an NNG object and has the "
 	     "typetag *tag* (if provided)",
-	     "x",kno_any_type,KNO_VOID,
-	     "tag",kno_symbol_type,KNO_VOID)
+	     {"x",kno_any_type,KNO_VOID},
+	     {"tag",kno_symbol_type,KNO_VOID})
 static lispval nngp_prim(lispval x,lispval tag)
 {
   if (!(KNO_TYPEP(x,kno_nng_type)))
@@ -137,7 +137,7 @@ static int socketp(kno_nng ptr)
 KNO_DEFCPRIM("nng/close",nng_close_prim,
 	     KNO_MAX_ARGS(1)|KNO_MIN_ARGS(1),
 	     "Closes an NNG object",
-	     "ptr",kno_any_type,KNO_VOID)
+	     {"ptr",kno_any_type,KNO_VOID})
 static lispval nng_close_prim(lispval ptr)
 {
   CHECK_NNG_TYPE(ptr,"nng/close");
@@ -167,9 +167,9 @@ KNO_DEFCPRIM("nng/listen",nng_listen_prim,
 	     KNO_MAX_ARGS(3)|KNO_MIN_ARGS(2),
 	     "(NNG/LISTEN *sock* *url*)\n"
 	     "Start listening on *url* using *sock*",
-	     "sock",kno_any_type,KNO_VOID,
-	     "url",kno_string_type,KNO_VOID,
-	     "opts",kno_any_type,KNO_FALSE)
+	     {"sock",kno_any_type,KNO_VOID},
+	     {"url",kno_string_type,KNO_VOID},
+	     {"opts",kno_any_type,KNO_FALSE})
 static lispval nng_listen_prim(lispval sock,lispval url,lispval opts)
 {
   CHECK_SOCKETP(sock,"nng/listen");
@@ -185,9 +185,9 @@ KNO_DEFCPRIM("nng/dial",nng_dial_prim,
 	     KNO_MAX_ARGS(3)|KNO_MIN_ARGS(2),
 	     "(NNG/DIAL *sock* *url*)\n"
 	     "Start listening on *url* using *sock*",
-	     "sock",kno_any_type,KNO_VOID,
-	     "url",kno_string_type,KNO_VOID,
-	     "opts",kno_any_type,KNO_FALSE)
+	     {"sock",kno_any_type,KNO_VOID},
+	     {"url",kno_string_type,KNO_VOID},
+	     {"opts",kno_any_type,KNO_FALSE})
 static lispval nng_dial_prim(lispval sock,lispval url,lispval opts)
 {
   CHECK_SOCKETP(sock,"nng/dial");
@@ -203,9 +203,9 @@ KNO_DEFCPRIM("nng/send",nng_send_prim,
 	     KNO_MAX_ARGS(3)|KNO_MIN_ARGS(2),
 	     "(NNG/SEND *sock* *packet* [*opts*])\n"
 	     "Send *packet* to *sock*",
-	     "sock",kno_any_type,KNO_VOID,
-	     "data",kno_any_type,KNO_VOID,
-	     "opts",kno_any_type,KNO_FALSE)
+	     {"sock",kno_any_type,KNO_VOID},
+	     {"data",kno_any_type,KNO_VOID},
+	     {"opts",kno_any_type,KNO_FALSE})
 static lispval nng_send_prim(lispval sock,lispval data,lispval opts)
 {
   CHECK_SOCKETP(sock,"nng/send");
@@ -227,9 +227,9 @@ KNO_DEFCPRIM("nng/recv",nng_recv_prim,
 	     KNO_MAX_ARGS(3)|KNO_MIN_ARGS(1),
 	     "(NNG/RECV *sock* [*opts*] [*packet*])\n "
 	     "Receive data from *sock*",
-	     "sock",kno_any_type,KNO_VOID,
-	     "opts",kno_any_type,KNO_VOID,
-	     "buf",kno_any_type,KNO_VOID)
+	     {"sock",kno_any_type,KNO_VOID},
+	     {"opts",kno_any_type,KNO_VOID},
+	     {"buf",kno_any_type,KNO_VOID})
 static lispval nng_recv_prim(lispval sock,lispval opts,lispval buf)
 {
   CHECK_SOCKETP(sock,"nng/recv");
@@ -321,7 +321,7 @@ static lispval nng_pair1_prim()
 KNO_DEFCPRIM("nng/context",nng_getcontext,
 	     KNO_MAX_ARGS(1)|KNO_MIN_ARGS(1),
 	     "Allocates a context object for a socket",
-	     "socket",kno_any_type,KNO_VOID)
+	     {"socket",kno_any_type,KNO_VOID})
 static lispval nng_getcontext(lispval socket)
 {
   CHECK_SOCKETP(socket,"nng/getcontext");
