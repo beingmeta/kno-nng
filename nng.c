@@ -54,6 +54,7 @@ static lispval get_typesym(xnng_type type)
 }
 
 static kno_lisp_type kno_nng_type;
+#define KNO_NNG_TYPE 0x9e7d146e91f480L
 
 struct KNO_NNG *kno_nng_create(xnng_type type)
 {
@@ -491,8 +492,7 @@ KNO_EXPORT int kno_init_nng()
   if (nng_initialized) return 0;
   nng_initialized = u8_millitime();
 
-  kno_nng_type = kno_register_cons_type("nng");
-  kno_unparsers[kno_nng_type] = unparse_nng_wrapper;
+  kno_nng_type = kno_register_cons_type("nng",KNO_NNG_TYPE);
 
   init_nng_typemap();
 
