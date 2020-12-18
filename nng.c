@@ -78,7 +78,6 @@ static int unparse_nng_wrapper(u8_output out,lispval x)
 
 KNO_DEFCPRIM("nng?",nngp_prim,
 	     KNO_MAX_ARGS(2)|KNO_MIN_ARGS(1),
-	     "`(NNG? *obj* [*tag*]) "
 	     "returns #t if *obj* is an NNG object and has the "
 	     "typetag *tag* (if provided)",
 	     {"x",kno_any_type,KNO_VOID},
