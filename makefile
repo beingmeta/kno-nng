@@ -160,8 +160,8 @@ debian/.build_setup:
 
 debian/changelog: debian nng.c nng.h makefile
 	cat debian/changelog.base | \
-		knobuild debchangelog kno-${PKG_NAME} ${CODENAME} \
-			${REL_BRANCH} ${REL_STATUS} ${REL_PRIORITY} \
+		u8_debchangelog kno-${PKG_NAME} ${CODENAME} ${REL_BRANCH} ${PATCH_VERSION} \
+			${REL_STATUS} ${REL_PRIORITY} \
 	    > $@.tmp
 	if test ! -f debian/changelog; then \
 	  mv debian/changelog.tmp debian/changelog; \
