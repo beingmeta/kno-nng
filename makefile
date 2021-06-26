@@ -38,7 +38,7 @@ MSG		  = echo
 MACLIBTOOL	  = $(CC) -dynamiclib -single_module -undefined dynamic_lookup \
 			$(LDFLAGS)
 
-GPGID           ::= ${USE_GPGID:-FE1BC737F9F323D732AA26330620266BE5AFF294}
+GPGID           ::= ${OVERRIDE_GPGID:-FE1BC737F9F323D732AA26330620266BE5AFF294}
 CODENAME	::= $(shell ${KNOCONFIG} codename)
 REL_BRANCH	::= $(shell ${KNOBUILD} getbuildopt REL_BRANCH current)
 REL_STATUS	::= $(shell ${KNOBUILD} getbuildopt REL_STATUS stable)
