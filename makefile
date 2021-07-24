@@ -11,14 +11,10 @@ INCLUDE		::= $(shell ${KNOCONFIG} include)
 KNO_VERSION	::= $(shell ${KNOCONFIG} version)
 KNO_MAJOR	::= $(shell ${KNOCONFIG} major)
 KNO_MINOR	::= $(shell ${KNOCONFIG} minor)
-PKG_VERSION     ::= $(shell cat ./version)
-PKG_MAJOR       ::= $(shell cat ./version | cut -d. -f1)
+PKG_VERSION     ::= $(shell u8_gitversion ./etc/knomod_version)
+PKG_MAJOR       ::= $(shell cat ./etc/knomod_version | cut -d. -f1)
 FULL_VERSION    ::= ${KNO_MAJOR}.${KNO_MINOR}.${PKG_VERSION}
-PATCHLEVEL      ::= $(shell u8_gitpatchcount ./version)
-PATCH_VERSION   ::= ${FULL_VERSION}-${PATCHLEVEL}
-
-PKG_NAME	::= nng
-DPKG_NAME	::= ${PKG_NAME}_${PATCH_VERSION}
+PATCHLEVEL      ::= $(shell u8_gitpatchcount ./etc/knomod_version)
 
 SUDO            ::= $(shell which sudo)
 INIT_CFLAGS     ::= ${CFLAGS}
@@ -29,14 +25,14 @@ KNO_LIBS	::= $(shell ${KNOCONFIG} libs)
 NNG_CFLAGS      ::= -I${NNGINSTALL}/include
 NNG_LDFLAGS     ::= -L${NNGINSTALL}/lib -lnng
 
-CFLAGS		  = ${INIT_CFLAGS} ${KNO_CFLAGS} ${NNG_CFLAGS}
-LDFLAGS		  = ${INIT_LDFLAGS} ${KNO_LDFLAGS} ${NNG_LDFLAGS}
+XCFLAGS		  = ${INIT_CFLAGS} ${KNO_CFLAGS} ${NNG_CFLAGS}
+XLDFLAGS		  = ${INIT_LDFLAGS} ${KNO_LDFLAGS} ${NNG_LDFLAGS}
 MKSO		  = $(CC) -shared $(LDFLAGS) $(LIBS)
 SYSINSTALL        = /usr/bin/install -c
 DIRINSTALL        = /usr/bin/install -d
 MSG		  = echo
 MACLIBTOOL	  = $(CC) -dynamiclib -single_module -undefined dynamic_lookup \
-			$(LDFLAGS)
+			$(XLDFLAGS)
 
 GPGID           ::= ${OVERRIDE_GPGID:-FE1BC737F9F323D732AA26330620266BE5AFF294}
 CODENAME	::= $(shell ${KNOCONFIG} codename)
@@ -77,12 +73,12 @@ normal:
 
 STATICLIBS=${NNGINSTALL}/lib/libnng.a
 
-nng/.git:
+nng/CMakeLists.txt:
 	git submodule init
 	git submodule update
 nng-build nng-install:
 	${DIRINSTALL} $@
-nng-build/build.ninja: nng/.git nng-build
+nng-build/build.ninja: nng/CMakeLists.txt nng-build
 	cd nng-build && \
 	cmake -G Ninja \
 	      -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
@@ -91,13 +87,13 @@ nng-build/build.ninja: nng/.git nng-build
 	      ../nng
 
 nng.o: nng.c makefile ${STATICLIBS} .buildmode
-	$(CC) $(CFLAGS) -D_FILEINFO="\"$(shell u8_fileinfo ./$< $(dirname $(pwd))/)\""  -o $@ -c $<
+	$(CC) $(XCFLAGS) -D_FILEINFO="\"$(shell u8_fileinfo ./$< $(dirname $(pwd))/)\""  -o $@ -c $<
 	@$(MSG) CC "(NNG)" $@
 nng.so: nng.o makefile .buildmode
 	 @$(MKSO) -o $@ nng.o -Wl,-soname=$(@F).${FULL_VERSION} \
 	          -Wl,--allow-multiple-definition \
 	          -Wl,--whole-archive ${STATICLIBS} -Wl,--no-whole-archive \
-		  $(LDFLAGS) ${STATICLIBS}
+		  $(XLDFLAGS) ${STATICLIBS}
 	 @$(MSG) MKSO "(NNG)" $@
 
 nng.dylib: nng.o

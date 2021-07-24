@@ -417,7 +417,6 @@ struct KNO_NNG_SERVER *make_server(u8_string addr,int n_waiters,lispval handlers
   server->waiters = waiters;
   server->n_waiters = n_waiters;
   server->handlers = kno_incref(handlers);
-  // kno_init_xrefs(&(server->xrefs));
   return server;
 }
 
