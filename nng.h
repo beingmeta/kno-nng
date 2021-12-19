@@ -70,11 +70,7 @@ typedef union XNNG_PTR {
   nng_sockaddr_zt sockaddr_zt;
   nng_sockaddr_in6 sockaddr_in6;
   nng_sockaddr_ipc sockaddr_ipc;
-  nng_sockaddr_tcp sockaddr_tcp;
-  nng_sockaddr_udp sockaddr_udp;
   nng_sockaddr_path sockaddr_path;
-  nng_sockaddr_tcp6 sockaddr_tcp6;
-  nng_sockaddr_udp6 sockaddr_udp6;
   nng_sockaddr_inproc sockaddr_inproc;
   nng_stream_dialer *stream_dialer;
   nng_stream_listener *stream_listener;
