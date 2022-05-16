@@ -1,5 +1,5 @@
 [submodule "nng"]
 	path = nng
-	url = git@github.com:beingmeta/nng.git
+	url = ../nng.git
 	branch = kno
 
