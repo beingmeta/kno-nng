@@ -48,6 +48,10 @@ static lispval nng_aio_symbol, nng_ctx_symbol, nng_iov_symbol, nng_msg_symbol,
   nng_stream_listener_symbol, nng_pub0_symbol, nng_sub0_symbol,
   nng_req0_symbol, nng_rep0_symbol;
 
+#if KNO_MAJOR_VERSION < 2210
+#define kno_proc_type kno_function_type
+#endif
+
 static lispval get_typesym(xnng_type type)
 {
   lispval key = KNO_INT(((int)type));
@@ -381,8 +385,9 @@ static void aio_call_thunk(void *vdata)
 
 
 DEFC_PRIM("nng/aio",nng_aio_prim,
-	  KNO_MAX_ARGS(0)|KNO_MIN_ARGS(0),
-	  "Opens an NNG AIO object")
+	  KNO_MAX_ARGS(1)|KNO_MIN_ARGS(1),
+	  "Opens an NNG AIO object",
+	  {"callback",kno_proc_type,KNO_VOID})
 static lispval nng_aio_prim(lispval callback)
 {
   struct KNO_NNG *ref = kno_nng_create(xnng_ctx_type);
